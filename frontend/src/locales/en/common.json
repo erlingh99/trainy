@@ -1,0 +1,174 @@
+{
+  "app": {
+    "title": "Training Planner",
+    "tagline": "Plan and track your orienteering training"
+  },
+  "nav": {
+    "users": "Users",
+    "week": "Week",
+    "month": "Stats",
+    "today": "Today",
+    "prev": "Previous",
+    "next": "Next",
+    "compare": "Compare",
+    "dashboard": "Dashboard"
+  },
+  "users": {
+    "select": "Select user",
+    "add": "Add user",
+    "addPlaceholder": "Name",
+    "create": "Create",
+    "noUsers": "No users yet — add one to get started.",
+    "manage": "Manage users",
+    "delete": "Delete",
+    "confirmDelete": "Delete {{name}} and all sessions?",
+    "editTitle": "Edit user",
+    "renamePlaceholder": "Name",
+    "save": "Save"
+  },
+  "session": {
+    "date": "Date",
+    "no": "Session #",
+    "name": "Session name",
+    "form": "Training form",
+    "character": "Character",
+    "surface": "Surface",
+    "duration": "Time (h:mm)",
+    "distance": "Distance (km)",
+    "rpe": "RPE",
+    "status": "Status",
+    "comment": "Comment",
+    "add": "Add session",
+    "edit": "Edit",
+    "view": "View session",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "empty": "No session",
+    "markDone": "Mark as done",
+    "reorder": "Reorder sessions",
+    "doneReorder": "Done",
+    "dragHandle": "Drag to reorder",
+    "part": "Part",
+    "addPart": "Add part",
+    "competition": "Competition",
+    "intensity": "Intensity"
+  },
+  "form": {
+    "running": "Running",
+    "orienteering": "Orienteering",
+    "strength": "Strength",
+    "cycling": "Cycling",
+    "elliptical": "Elliptical",
+    "other": "Other"
+  },
+  "character": {
+    "distance": "Distance",
+    "interval": "Interval",
+    "tempo": "Tempo",
+    "long": "Long",
+    "middle": "Middle",
+    "technique": "Technique",
+    "fartlek": "Fartlek",
+    "upperbody": "Upper body",
+    "lowerbody": "Lower body",
+    "fullbody": "Full body",
+    "other": "Other"
+  },
+  "intensity": {
+    "threshold": "Threshold",
+    "vo2": "VO2",
+    "recovery": "Recovery"
+  },
+  "surface": {
+    "trail": "Trail",
+    "gravel": "Gravel",
+    "road": "Road",
+    "forest": "Forest",
+    "gym": "Gym",
+    "track": "Track",
+    "treadmill": "Treadmill",
+    "other": "Other"
+  },
+  "status": {
+    "planned": "Planned",
+    "done": "Done",
+    "skipped": "Skipped"
+  },
+  "weekday": {
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday",
+    "7": "Sunday"
+  },
+  "summary": {
+    "title": "Summary",
+    "sessions": "Sessions",
+    "time": "Time",
+    "distance": "Distance",
+    "quality": "Quality sessions",
+    "avgKm": "Avg km/session",
+    "avgTime": "Avg time/session",
+    "weekTotal": "Week total",
+    "monthTotal": "Month total",
+    "distribution": "Training distribution",
+    "weeklyVolume": "Volume per week",
+    "dailyVolume": "Daily volume"
+  },
+  "compare": {
+    "title": "Compare training",
+    "user1": "Athlete 1",
+    "user2": "Athlete 2",
+    "selectUser": "Select athlete"
+  },
+  "api": {
+    "unreachable": "Cannot reach the API - check your connection and try again.",
+    "loading": "Loading…",
+    "error": "Something went wrong"
+  },
+  "lang": {
+    "label": "Language"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "year": "Year",
+    "kpi": {
+      "sessions": "Total sessions",
+      "time": "Total time",
+      "distance": "Total km",
+      "quality": "Quality sessions"
+    },
+    "goals": {
+      "title": "Weekly goals",
+      "sessionsPerWeek": "Sessions/week",
+      "hoursPerWeek": "Hours/week",
+      "kmPerWeek": "Km/week",
+      "save": "Save goals",
+      "actual": "Actual avg"
+    },
+    "trend": {
+      "title": "Weekly trend",
+      "sessions": "Sessions",
+      "hours": "Hours",
+      "km": "Km"
+    },
+    "character": "Character distribution",
+    "monthly": "Monthly comparison"
+  },
+  "palette": {
+    "title": "Color theme",
+    "default": "Default",
+    "forest": "Forest",
+    "ocean": "Ocean",
+    "ember": "Ember",
+    "amethyst": "Amethyst",
+    "rose": "Rose",
+    "nordic": "Nordic",
+    "obsidian": "Obsidian",
+    "custom": "Custom",
+    "hue": "Hue"
+  }
+}

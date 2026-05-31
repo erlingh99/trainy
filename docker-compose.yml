@@ -1,0 +1,21 @@
+services:
+  trainy:
+    container_name: trainy_backend
+    image: ghcr.io/erlingh99/trainy:latest
+    platform: linux/arm64
+    dns:
+      - ${DNS_IP}
+    env_file:
+      - .env
+    networks:
+      - proxy
+    volumes:
+      - trainy_data:/app/data
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  trainy_data:

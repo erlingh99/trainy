@@ -1,0 +1,174 @@
+{
+  "app": {
+    "title": "Träningsplanering",
+    "tagline": "Planera och följ upp din orienteringsträning"
+  },
+  "nav": {
+    "users": "Användare",
+    "week": "Vecka",
+    "month": "Statistik",
+    "today": "Idag",
+    "prev": "Föregående",
+    "next": "Nästa",
+    "compare": "Jämför",
+    "dashboard": "Dashboard"
+  },
+  "users": {
+    "select": "Välj användare",
+    "add": "Lägg till användare",
+    "addPlaceholder": "Namn",
+    "create": "Skapa",
+    "noUsers": "Inga användare ännu — lägg till en för att börja.",
+    "manage": "Hantera användare",
+    "delete": "Ta bort",
+    "confirmDelete": "Ta bort {{name}} och alla pass?",
+    "editTitle": "Redigera användare",
+    "renamePlaceholder": "Namn",
+    "save": "Spara"
+  },
+  "session": {
+    "date": "Datum",
+    "no": "Pass #",
+    "name": "Passnamn",
+    "form": "Träningsform",
+    "character": "Passkaraktär",
+    "surface": "Underlag/miljö",
+    "duration": "Tid (h:mm)",
+    "distance": "Distans (km)",
+    "rpe": "RPE",
+    "status": "Status",
+    "comment": "Kommentar",
+    "add": "Lägg till pass",
+    "edit": "Redigera",
+    "view": "Visa pass",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "delete": "Ta bort",
+    "empty": "Inget pass",
+    "markDone": "Markera genomfört",
+    "reorder": "Ändra ordning",
+    "doneReorder": "Klar",
+    "dragHandle": "Dra för att ordna om",
+    "part": "Del",
+    "addPart": "Lägg till del",
+    "competition": "Tävling",
+    "intensity": "Intensitet"
+  },
+  "form": {
+    "running": "Löpning",
+    "orienteering": "Orientering",
+    "strength": "Styrka",
+    "cycling": "Cykling",
+    "elliptical": "Crosstrainer",
+    "other": "Annat"
+  },
+  "character": {
+    "distance": "Distans",
+    "interval": "Intervall",
+    "tempo": "Tempo",
+    "long": "Lång",
+    "middle": "Medel",
+    "technique": "Teknik",
+    "fartlek": "Fartlek",
+    "upperbody": "Överkropp",
+    "lowerbody": "Ben",
+    "fullbody": "Full",
+    "other": "Annat"
+  },
+  "intensity": {
+    "threshold": "Tröskel",
+    "vo2": "VO2",
+    "recovery": "Återhämtning"
+  },
+  "surface": {
+    "trail": "Stig",
+    "gravel": "Grus",
+    "road": "Väg",
+    "forest": "Skog",
+    "gym": "Gym",
+    "track": "Bana",
+    "treadmill": "Löpband",
+    "other": "Annat"
+  },
+  "status": {
+    "planned": "Planerat",
+    "done": "Genomfört",
+    "skipped": "Inställt"
+  },
+  "weekday": {
+    "1": "Måndag",
+    "2": "Tisdag",
+    "3": "Onsdag",
+    "4": "Torsdag",
+    "5": "Fredag",
+    "6": "Lördag",
+    "7": "Söndag"
+  },
+  "summary": {
+    "title": "Sammanställning",
+    "sessions": "Pass",
+    "time": "Tid",
+    "distance": "Distans",
+    "quality": "Kvalitetspass",
+    "avgKm": "Snitt km/pass",
+    "avgTime": "Snitt tid/pass",
+    "weekTotal": "Veckototalt",
+    "monthTotal": "Månadstotalt",
+    "distribution": "Träningsfördelning",
+    "weeklyVolume": "Volym per vecka",
+    "dailyVolume": "Daglig volym"
+  },
+  "compare": {
+    "title": "Jämför träning",
+    "user1": "Atlet 1",
+    "user2": "Atlet 2",
+    "selectUser": "Välj atlet"
+  },
+  "api": {
+    "unreachable": "Kunde inte nå API:t - kontrollera nätverksanslutningen och försök igen.",
+    "loading": "Läser in…",
+    "error": "Något gick fel"
+  },
+  "lang": {
+    "label": "Språk"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "year": "År",
+    "kpi": {
+      "sessions": "Totalt antal pass",
+      "time": "Total tid",
+      "distance": "Total km",
+      "quality": "Kvalitetspass"
+    },
+    "goals": {
+      "title": "Veckliga mål",
+      "sessionsPerWeek": "Pass/vecka",
+      "hoursPerWeek": "Timmar/vecka",
+      "kmPerWeek": "Km/vecka",
+      "save": "Spara mål",
+      "actual": "Faktiskt snitt"
+    },
+    "trend": {
+      "title": "Veckotrend",
+      "sessions": "Pass",
+      "hours": "Timmar",
+      "km": "Km"
+    },
+    "character": "Passkaraktärsfördelning",
+    "monthly": "Månadsöversikt"
+  },
+  "palette": {
+    "title": "Färgtema",
+    "default": "Standard",
+    "forest": "Skog",
+    "ocean": "Hav",
+    "ember": "Glöd",
+    "amethyst": "Ametist",
+    "rose": "Ros",
+    "nordic": "Nordisk",
+    "obsidian": "Obsidian",
+    "custom": "Anpassad",
+    "hue": "Nyans"
+  }
+}

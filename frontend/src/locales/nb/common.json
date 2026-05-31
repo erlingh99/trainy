@@ -1,0 +1,174 @@
+{
+  "app": {
+    "title": "Treningsplanlegging",
+    "tagline": "Planlegg og følg opp orienteringstreningen din"
+  },
+  "nav": {
+    "users": "Brukere",
+    "week": "Uke",
+    "month": "Statistikk",
+    "today": "I dag",
+    "prev": "Forrige",
+    "next": "Neste",
+    "compare": "Sammenlign",
+    "dashboard": "Dashboard"
+  },
+  "users": {
+    "select": "Velg bruker",
+    "add": "Legg til bruker",
+    "addPlaceholder": "Navn",
+    "create": "Opprett",
+    "noUsers": "Ingen brukere ennå — legg til en for å starte.",
+    "manage": "Administrer brukere",
+    "delete": "Slett",
+    "confirmDelete": "Slette {{name}} og alle økter?",
+    "editTitle": "Rediger bruker",
+    "renamePlaceholder": "Navn",
+    "save": "Lagre"
+  },
+  "session": {
+    "date": "Dato",
+    "no": "Økt #",
+    "name": "Øktnavn",
+    "form": "Treningsform",
+    "character": "Øktkarakter",
+    "surface": "Underlag/miljø",
+    "duration": "Tid (h:mm)",
+    "distance": "Distanse (km)",
+    "rpe": "RPE",
+    "status": "Status",
+    "comment": "Kommentar",
+    "add": "Legg til økt",
+    "edit": "Rediger",
+    "view": "Vis økt",
+    "save": "Lagre",
+    "cancel": "Avbryt",
+    "delete": "Slett",
+    "empty": "Ingen økt",
+    "markDone": "Marker gjennomført",
+    "reorder": "Endre rekkefølge",
+    "doneReorder": "Ferdig",
+    "dragHandle": "Dra for å endre rekkefølge",
+    "part": "Del",
+    "addPart": "Legg til del",
+    "competition": "Konkurranse",
+    "intensity": "Intensitet"
+  },
+  "form": {
+    "running": "Løping",
+    "orienteering": "Orientering",
+    "strength": "Styrke",
+    "cycling": "Sykling",
+    "elliptical": "Ellipse",
+    "other": "Annet"
+  },
+  "character": {
+    "distance": "Distanse",
+    "interval": "Intervall",
+    "tempo": "Tempo",
+    "long": "Lang",
+    "middle": "Mellom",
+    "technique": "Teknikk",
+    "fartlek": "Fartlek",
+    "upperbody": "Overkropp",
+    "lowerbody": "Ben",
+    "fullbody": "Full",
+    "other": "Annet"
+  },
+  "intensity": {
+    "threshold": "Terskel",
+    "vo2": "VO2",
+    "recovery": "Restitusjon"
+  },
+  "surface": {
+    "trail": "Sti",
+    "gravel": "Grus",
+    "road": "Vei",
+    "forest": "Skog",
+    "gym": "Treningssenter",
+    "track": "Bane",
+    "treadmill": "Tredemølle",
+    "other": "Annet"
+  },
+  "status": {
+    "planned": "Planlagt",
+    "done": "Gjennomført",
+    "skipped": "Avlyst"
+  },
+  "weekday": {
+    "1": "Mandag",
+    "2": "Tirsdag",
+    "3": "Onsdag",
+    "4": "Torsdag",
+    "5": "Fredag",
+    "6": "Lørdag",
+    "7": "Søndag"
+  },
+  "summary": {
+    "title": "Oppsummering",
+    "sessions": "Økter",
+    "time": "Tid",
+    "distance": "Distanse",
+    "quality": "Kvalitetsøkter",
+    "avgKm": "Snitt km/økt",
+    "avgTime": "Snitt tid/økt",
+    "weekTotal": "Ukestotalt",
+    "monthTotal": "Månedstotalt",
+    "distribution": "Treningsfordeling",
+    "weeklyVolume": "Volum per uke",
+    "dailyVolume": "Daglig volum"
+  },
+  "compare": {
+    "title": "Sammenlign trening",
+    "user1": "Utøver 1",
+    "user2": "Utøver 2",
+    "selectUser": "Velg utøver"
+  },
+  "api": {
+    "unreachable": "Kunne ikke nå APIet - sjekk nettverkstilkoblingen og prøv igjen",
+    "loading": "Laster…",
+    "error": "Noe gikk galt"
+  },
+  "lang": {
+    "label": "Språk"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "year": "År",
+    "kpi": {
+      "sessions": "Totalt antall økter",
+      "time": "Total tid",
+      "distance": "Total km",
+      "quality": "Kvalitetsøkter"
+    },
+    "goals": {
+      "title": "Ukentlige mål",
+      "sessionsPerWeek": "Økter/uke",
+      "hoursPerWeek": "Timer/uke",
+      "kmPerWeek": "Km/uke",
+      "save": "Lagre mål",
+      "actual": "Faktisk snitt"
+    },
+    "trend": {
+      "title": "Uketrend",
+      "sessions": "Økter",
+      "hours": "Timer",
+      "km": "Km"
+    },
+    "character": "Øktkaraktærfordeling",
+    "monthly": "Månedsoversikt"
+  },
+  "palette": {
+    "title": "Fargetema",
+    "default": "Standard",
+    "forest": "Skog",
+    "ocean": "Hav",
+    "ember": "Glød",
+    "amethyst": "Ametyst",
+    "rose": "Rose",
+    "nordic": "Nordisk",
+    "obsidian": "Obsidian",
+    "custom": "Egendefinert",
+    "hue": "Fargetone"
+  }
+}
