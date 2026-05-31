@@ -30,9 +30,9 @@ class SessionCharacter(StrEnum):
     technique = "technique"
     fartlek = "fartlek"
     # Strength characters
-    upperbody = "upper"
-    lowerbody = "lower"
-    fullbody = "full"
+    upperbody = "upperbody"
+    lowerbody = "lowerbody"
+    fullbody = "fullbody"
     other = "other"
 
 
