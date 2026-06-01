@@ -77,10 +77,12 @@ export function WeeklyVolumeChart({
   username,
   yyyymm,
   metric = "hours",
+  onlyDone = false,
 }: {
   username: string;
   yyyymm: string;
   metric?: "hours" | "km";
+  onlyDone?: boolean;
 }) {
   const { t } = useTranslation();
   const [year, month] = yyyymm.split("-").map(Number);
@@ -88,7 +90,8 @@ export function WeeklyVolumeChart({
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${yyyymm}-${String(lastDay).padStart(2, "0")}`;
 
-  const { data: sessions = [] } = useQuery(monthSessionsQuery(username, start, end));
+  const { data: allSessions = [] } = useQuery(monthSessionsQuery(username, start, end));
+  const sessions = onlyDone ? allSessions.filter((s) => s.status === "done") : allSessions;
 
   // Aggregate per week per form
   const byWeek = new Map<string, Map<string, { seconds: number; km: number }>>();
@@ -245,11 +248,12 @@ export function WeeklyTrendChart({ weeks }: { weeks: WeekTrend[] }) {
         {t("dashboard.trend.title")}
       </p>
       <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data} margin={{ top: 5, right: 45, left: -15, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 5, right: 75, left: -15, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
           <XAxis dataKey="week" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
           <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
-          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} width={38} />
+          <YAxis yAxisId="hours" orientation="right" tick={{ fontSize: 11 }} unit="h" width={32} />
+          <YAxis yAxisId="km" orientation="right" tick={{ fontSize: 11 }} unit="k" width={38} />
           <Tooltip contentStyle={{ fontSize: 12, borderRadius: 6 }} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
           <Line
@@ -263,7 +267,7 @@ export function WeeklyTrendChart({ weeks }: { weeks: WeekTrend[] }) {
             isAnimationActive={false}
           />
           <Line
-            yAxisId="right"
+            yAxisId="hours"
             type="monotone"
             dataKey="hours"
             stroke="#10b981"
@@ -273,7 +277,7 @@ export function WeeklyTrendChart({ weeks }: { weeks: WeekTrend[] }) {
             isAnimationActive={false}
           />
           <Line
-            yAxisId="right"
+            yAxisId="km"
             type="monotone"
             dataKey="km"
             stroke="#3b82f6"
@@ -291,12 +295,13 @@ export function WeeklyTrendChart({ weeks }: { weeks: WeekTrend[] }) {
 export function MonthlyComparisonChart({ weeks }: { weeks: WeekTrend[] }) {
   const { t, i18n } = useTranslation();
 
-  const byMonth = new Map<string, { sessions: number; hours: number }>();
+  const byMonth = new Map<string, { sessions: number; hours: number; km: number }>();
   for (const w of weeks) {
     const month = w.start.slice(0, 7);
-    const curr = byMonth.get(month) ?? { sessions: 0, hours: 0 };
+    const curr = byMonth.get(month) ?? { sessions: 0, hours: 0, km: 0 };
     curr.sessions += w.totals.session_count;
     curr.hours += w.totals.total_seconds / 3600;
+    curr.km += w.totals.total_distance_km;
     byMonth.set(month, curr);
   }
 
@@ -307,7 +312,12 @@ export function MonthlyComparisonChart({ weeks }: { weeks: WeekTrend[] }) {
       const label = new Intl.DateTimeFormat(i18n.language, { month: "short" }).format(
         new Date(year, month - 1, 1),
       );
-      return { month: label, sessions: v.sessions, hours: Math.round(v.hours * 10) / 10 };
+      return {
+        month: label,
+        sessions: v.sessions,
+        hours: Math.round(v.hours * 10) / 10,
+        km: Math.round(v.km * 10) / 10,
+      };
     });
 
   return (
@@ -316,11 +326,12 @@ export function MonthlyComparisonChart({ weeks }: { weeks: WeekTrend[] }) {
         {t("dashboard.monthly")}
       </p>
       <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 5, right: 20, left: -15, bottom: 5 }}>
+        <BarChart data={data} margin={{ top: 5, right: 55, left: -15, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
           <XAxis dataKey="month" tick={{ fontSize: 11 }} />
           <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
-          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} unit="h" />
+          <YAxis yAxisId="hours" orientation="right" tick={{ fontSize: 11 }} unit="h" width={32} />
+          <YAxis yAxisId="km" orientation="right" tick={{ fontSize: 11 }} unit="k" width={38} />
           <Tooltip contentStyle={{ fontSize: 12, borderRadius: 6 }} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
           <Bar
@@ -332,10 +343,18 @@ export function MonthlyComparisonChart({ weeks }: { weeks: WeekTrend[] }) {
             isAnimationActive={false}
           />
           <Bar
-            yAxisId="right"
+            yAxisId="hours"
             dataKey="hours"
             fill="#10b981"
             name={t("dashboard.trend.hours")}
+            radius={[3, 3, 0, 0]}
+            isAnimationActive={false}
+          />
+          <Bar
+            yAxisId="km"
+            dataKey="km"
+            fill="#3b82f6"
+            name={t("dashboard.trend.km")}
             radius={[3, 3, 0, 0]}
             isAnimationActive={false}
           />

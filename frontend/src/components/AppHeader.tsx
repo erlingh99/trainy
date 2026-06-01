@@ -55,7 +55,8 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
     });
   };
 
-  const navLinkClass = "flex items-center gap-1.5 rounded px-2 py-2 text-sm text-foreground/70 hover:bg-accent hover:text-foreground";
+  const navLinkClass =
+    "flex items-center gap-1.5 rounded px-2 py-2 text-sm text-foreground/70 hover:bg-accent hover:text-foreground";
   const navLinkActiveClass =
     "flex items-center gap-1.5 rounded px-2 py-2 text-sm bg-primary/10 text-primary font-medium";
 
@@ -91,7 +92,9 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
                 to="/u/$username/week/$week"
                 params={{ username, week: week ?? currentIsoWeek() }}
                 className="rounded px-2 py-1 text-foreground/70 hover:bg-accent hover:text-foreground"
-                activeProps={{ className: "rounded px-2 py-1 bg-primary/10 text-primary font-medium" }}
+                activeProps={{
+                  className: "rounded px-2 py-1 bg-primary/10 text-primary font-medium",
+                }}
               >
                 {t("nav.week")}
               </Link>
@@ -99,7 +102,9 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
                 to="/u/$username/month/$yyyymm"
                 params={{ username, yyyymm: new Date().toISOString().slice(0, 7) }}
                 className="rounded px-2 py-1 text-foreground/70 hover:bg-accent hover:text-foreground"
-                activeProps={{ className: "rounded px-2 py-1 bg-primary/10 text-primary font-medium" }}
+                activeProps={{
+                  className: "rounded px-2 py-1 bg-primary/10 text-primary font-medium",
+                }}
               >
                 {t("nav.month")}
               </Link>
@@ -107,7 +112,9 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
                 to="/u/$username/dashboard"
                 params={{ username }}
                 className="rounded px-2 py-1 text-foreground/70 hover:bg-accent hover:text-foreground"
-                activeProps={{ className: "rounded px-2 py-1 bg-primary/10 text-primary font-medium" }}
+                activeProps={{
+                  className: "rounded px-2 py-1 bg-primary/10 text-primary font-medium",
+                }}
               >
                 {t("nav.dashboard")}
               </Link>
@@ -116,7 +123,10 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
                 params={{ week: week ?? currentIsoWeek() }}
                 search={{ user1: username, user2: undefined }}
                 className="flex items-center gap-1 rounded px-2 py-1 text-foreground/70 hover:bg-accent hover:text-foreground"
-                activeProps={{ className: "flex items-center gap-1 rounded px-2 py-1 bg-primary/10 text-primary font-medium" }}
+                activeProps={{
+                  className:
+                    "flex items-center gap-1 rounded px-2 py-1 bg-primary/10 text-primary font-medium",
+                }}
               >
                 <ArrowLeftRight className="h-3 w-3" />
                 {t("nav.compare")}

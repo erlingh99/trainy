@@ -7,10 +7,11 @@ import { secondsToHmm } from "@/lib/format";
 import {
   WeeklyTrendChart,
   MonthlyComparisonChart,
-  CharacterDistributionChart,
+  FormDistributionChart,
 } from "@/components/TrainingCharts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Goals } from "@/lib/types";
 
@@ -23,11 +24,12 @@ function DashboardPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [onlyDone, setOnlyDone] = useState(false);
 
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 
-  const { data: season } = useQuery(seasonSummaryQuery(username, from, to));
+  const { data: season } = useQuery(seasonSummaryQuery(username, from, to, onlyDone));
   const { data: savedGoals } = useQuery(goalsQuery(username));
 
   const [editGoals, setEditGoals] = useState<Goals | null>(null);
@@ -84,6 +86,27 @@ function DashboardPage() {
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
+        <div className="ml-auto">
+          <ToggleGroup
+            type="single"
+            value={onlyDone ? "done" : "all"}
+            onValueChange={(v) => v && setOnlyDone(v === "done")}
+            className="h-7 gap-0 rounded-full border bg-muted p-0.5"
+          >
+            <ToggleGroupItem
+              value="all"
+              className="h-6 rounded-full px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+            >
+              {t("summary.filterAll")}
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="done"
+              className="h-6 rounded-full px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+            >
+              {t("summary.filterDone")}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
 
       {/* KPI cards */}
@@ -162,7 +185,7 @@ function DashboardPage() {
 
       {/* Character dist + monthly */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {totals && <CharacterDistributionChart totals={totals} />}
+        {totals && <FormDistributionChart totals={totals} />}
         <MonthlyComparisonChart weeks={weeks} />
       </div>
     </div>
@@ -175,7 +198,9 @@ function KpiCard({ label, value }: { label: string; value: string | number }) {
       <div className="h-[3px] bg-primary" />
       <div className="p-4">
         <div className="text-2xl font-bold tabular-nums">{value}</div>
-        <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </div>
       </div>
     </div>
   );

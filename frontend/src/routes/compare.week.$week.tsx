@@ -16,12 +16,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { User } from "@/lib/types";
-import {
-  isCustomPalette,
-  buildCustomVars,
-  getPalette,
-  customSwatchColor,
-} from "@/lib/palettes";
+import { isCustomPalette, buildCustomVars, getPalette, customSwatchColor } from "@/lib/palettes";
 
 export const Route = createFileRoute("/compare/week/$week")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -79,7 +74,10 @@ function ComparePage() {
 
   return (
     // Outer div scoped to user1's palette — affects AppHeader accent + week nav
-    <div className="min-h-screen bg-background text-foreground" {...paletteProps(user1Obj?.palette)}>
+    <div
+      className="min-h-screen bg-background text-foreground"
+      {...paletteProps(user1Obj?.palette)}
+    >
       <ApiBanner />
       <AppHeader usernameOverride={user1} />
 

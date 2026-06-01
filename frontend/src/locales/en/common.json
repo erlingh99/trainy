@@ -116,7 +116,9 @@
     "monthTotal": "Month total",
     "distribution": "Training distribution",
     "weeklyVolume": "Volume per week",
-    "dailyVolume": "Daily volume"
+    "dailyVolume": "Daily volume",
+    "filterAll": "All",
+    "filterDone": "Completed"
   },
   "compare": {
     "title": "Compare training",

@@ -47,11 +47,15 @@ def _month_range(yyyymm: str) -> tuple[date, date]:
         raise HTTPException(400, "yyyymm must look like 2026-05")
 
 
+RUNNING_FORMS = {"running", "orienteering"}
+
+
 def _aggregate(sessions: Sequence[Session]) -> dict:
     counted = list(sessions)
     all_parts = [p for s in counted for p in (s.parts or [])]
     total_seconds = sum(p.get("duration_seconds") or 0 for p in all_parts)
-    total_distance = sum(p.get("distance_km") or 0.0 for p in all_parts)
+    running_parts = [p for p in all_parts if p.get("form") in RUNNING_FORMS]
+    total_distance = sum(p.get("distance_km") or 0.0 for p in running_parts)
     quality = sum(
         1
         for s in counted
@@ -81,6 +85,7 @@ async def season_summary(
     user: str,
     from_date: str = Query(..., alias="from"),
     to_date: str = Query(..., alias="to"),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     try:
@@ -95,6 +100,8 @@ async def season_summary(
         .order_by(col(Session.date), col(Session.session_no))
     )
     all_sessions = result.all()
+    if status:
+        all_sessions = [s for s in all_sessions if s.status == status]
 
     weeks = []
     cur = from_d

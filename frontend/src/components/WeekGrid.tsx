@@ -23,10 +23,19 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { weekDays, isoDate, shiftIsoWeek, currentIsoWeek, weekRangeLabel } from "@/lib/week";
-import { weekSummaryQuery, usersQuery } from "@/lib/queries";
+import { weekSummaryQuery, usersQuery, goalsQuery } from "@/lib/queries";
 import { km, secondsToHmm } from "@/lib/format";
-import { sessionDuration, sessionDistance, type Session, type WeekSummary } from "@/lib/types";
+import {
+  sessionDuration,
+  sessionDistance,
+  computeTotals,
+  type Session,
+  type WeekSummary,
+  type Totals,
+  type Goals,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Check,
@@ -43,6 +52,7 @@ import { SessionDialog } from "./SessionDialog";
 import { SessionViewDialog, StatusBadge, Chip } from "./SessionViewDialog";
 import { DailyVolumeChart } from "./TrainingCharts";
 import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
 import { api } from "@/lib/api";
 
 // ── Sortable row (reorder mode only) ──────────────────────────────────────
@@ -87,7 +97,9 @@ function SortableSessionRow({
       <td className="p-2">
         <div className="flex items-center gap-1">
           <span>{s.name ?? <span className="text-muted-foreground/60">—</span>}</span>
-          {s.parts.some((p) => p.competition) && <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+          {s.parts.some((p) => p.competition) && (
+            <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          )}
         </div>
         {s.parts.some((p) => p.form || p.character) && (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -132,10 +144,20 @@ function SessionDragOverlay({ session, t }: { session: Session; t: (key: string)
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm shadow-xl ring-1 ring-border">
       <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
-      <span className="font-medium">{session.name ?? (session.parts[0]?.form ? t(`form.${session.parts[0].form}`) : t("form.other"))}</span>
-      {session.parts.some((p) => p.competition) && <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+      <span className="font-medium">
+        {session.name ??
+          (session.parts[0]?.form ? t(`form.${session.parts[0].form}`) : t("form.other"))}
+      </span>
+      {session.parts.some((p) => p.competition) && (
+        <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+      )}
       {session.parts.some((p) => p.form) && session.name && (
-        <span className="text-muted-foreground">{session.parts.map((p) => p.form ? t(`form.${p.form}`) : null).filter(Boolean).join(", ")}</span>
+        <span className="text-muted-foreground">
+          {session.parts
+            .map((p) => (p.form ? t(`form.${p.form}`) : null))
+            .filter(Boolean)
+            .join(", ")}
+        </span>
       )}
       {sessionDuration(session) != null && (
         <span className="tabular-nums text-muted-foreground">
@@ -225,8 +247,12 @@ function MobileSessionCard({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1 font-medium">
-          <span className="truncate">{s.name ?? (s.parts[0]?.form ? t(`form.${s.parts[0].form}`) : t("form.other"))}</span>
-          {s.parts.some((p) => p.competition) && <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+          <span className="truncate">
+            {s.name ?? (s.parts[0]?.form ? t(`form.${s.parts[0].form}`) : t("form.other"))}
+          </span>
+          {s.parts.some((p) => p.competition) && (
+            <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          )}
         </div>
         <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {sessionDuration(s) != null && (
@@ -336,8 +362,10 @@ export function WeekGrid({ username, week, noContainer }: Props) {
   const { data: users = [] } = useQuery(usersQuery());
   const user = users.find((u) => u.name === username);
   const { data: summary } = useQuery(weekSummaryQuery(username, week));
+  const { data: goals } = useQuery(goalsQuery(username));
 
   const days = useMemo(() => weekDays(week), [week]);
+  const [onlyDone, setOnlyDone] = useState(false);
   const sessions = useMemo(() => summary?.sessions ?? [], [summary?.sessions]);
 
   const sessionMap = useMemo(() => {
@@ -351,15 +379,11 @@ export function WeekGrid({ username, week, noContainer }: Props) {
     return map;
   }, [sessions]);
 
-  const totals = summary?.totals ?? {
-    session_count: 0,
-    total_seconds: 0,
-    total_distance_km: 0,
-    quality_sessions: 0,
-    by_form: {},
-    avg_km_per_session: 0,
-    avg_seconds_per_session: 0,
-  };
+  const statSessions = useMemo(
+    () => (onlyDone ? sessions.filter((s) => s.status === "done") : sessions),
+    [sessions, onlyDone],
+  );
+  const totals = useMemo(() => computeTotals(statSessions), [statSessions]);
 
   // editing: only for adding new sessions
   const [editing, setEditing] = useState<{ date: string; sessionNo: number } | null>(null);
@@ -370,7 +394,9 @@ export function WeekGrid({ username, week, noContainer }: Props) {
   const [highlightedDay, setHighlightedDay] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
-  const openViewing = useCallback((s: Session) => { startTransition(() => setViewing(s)); }, []);
+  const openViewing = useCallback((s: Session) => {
+    startTransition(() => setViewing(s));
+  }, []);
   const openEditing = useCallback((date: string, sessionNo: number) => {
     startTransition(() => setEditing({ date, sessionNo }));
   }, []);
@@ -382,6 +408,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["summary", "week"] });
       qc.invalidateQueries({ queryKey: ["summary", "month"] });
+      confetti({ particleCount: 120, spread: 70, origin: { y: 1 }, angle: 90 });
     },
   });
 
@@ -568,13 +595,23 @@ export function WeekGrid({ username, week, noContainer }: Props) {
     <div className={noContainer ? "p-3" : "container mx-auto p-3"}>
       {!noContainer && (
         <div className="flex items-center gap-1 pb-3">
-          <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => goWeek(-1)}>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+            onClick={() => goWeek(-1)}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-[130px] text-center text-sm font-semibold text-primary">
             {weekRangeLabel(week, i18n.language)}
           </div>
-          <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" onClick={() => goWeek(1)}>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+            onClick={() => goWeek(1)}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
@@ -592,8 +629,34 @@ export function WeekGrid({ username, week, noContainer }: Props) {
           >
             {t("nav.today")}
           </Button>
+          <div className="ml-auto">
+            <ToggleGroup
+              type="single"
+              value={onlyDone ? "done" : "all"}
+              onValueChange={(v) => v && setOnlyDone(v === "done")}
+              className="h-7 gap-0 rounded-full border bg-muted p-0.5"
+            >
+              <ToggleGroupItem
+                value="all"
+                className="h-6 rounded-full px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                {t("summary.filterAll")}
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="done"
+                className="h-6 rounded-full px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                {t("summary.filterDone")}
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </div>
       )}
+      {goals &&
+        (goals.sessions_per_week > 0 || goals.hours_per_week > 0 || goals.km_per_week > 0) && (
+          <WeekGoals goals={goals} totals={totals} t={t} />
+        )}
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -642,9 +705,15 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                     const weekdayNum = ((d.getUTCDay() + 6) % 7) + 1;
                     return (
                       <Fragment key={iso}>
-                        <DroppableDayHeader iso={iso} highlighted={highlightedDay === iso} isToday={isToday}>
+                        <DroppableDayHeader
+                          iso={iso}
+                          highlighted={highlightedDay === iso}
+                          isToday={isToday}
+                        >
                           <td colSpan={7} className="px-3 py-1.5 text-sm font-medium">
-                            <span className={cn(isToday && "text-primary")}>{t(`weekday.${weekdayNum}`)}</span>
+                            <span className={cn(isToday && "text-primary")}>
+                              {t(`weekday.${weekdayNum}`)}
+                            </span>
                             <span className="ml-2 text-xs font-normal text-muted-foreground">
                               {dateFmt.format(d)}
                             </span>
@@ -666,7 +735,12 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                             />
                           ))}
                         </SortableContext>
-                        <tr className={cn("border-t hover:bg-accent/40", isToday && "bg-primary/[0.035]")}>
+                        <tr
+                          className={cn(
+                            "border-t hover:bg-accent/40",
+                            isToday && "bg-primary/[0.035]",
+                          )}
+                        >
                           <td colSpan={7} className="p-1">
                             <Button
                               size="sm"
@@ -697,10 +771,21 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                     <td
                       rowSpan={totalRows}
                       className={cn("py-2 pl-3 pr-2 align-top", isToday && "text-primary")}
-                      style={{ borderLeft: isToday ? "3px solid var(--primary)" : "3px solid transparent" }}
+                      style={{
+                        borderLeft: isToday ? "3px solid var(--primary)" : "3px solid transparent",
+                      }}
                     >
-                      <div className="text-sm font-semibold leading-tight">{t(`weekday.${weekdayNum}`)}</div>
-                      <div className={cn("text-[11px]", isToday ? "text-primary/60" : "text-muted-foreground")}>{dateFmt.format(d)}</div>
+                      <div className="text-sm font-semibold leading-tight">
+                        {t(`weekday.${weekdayNum}`)}
+                      </div>
+                      <div
+                        className={cn(
+                          "text-[11px]",
+                          isToday ? "text-primary/60" : "text-muted-foreground",
+                        )}
+                      >
+                        {dateFmt.format(d)}
+                      </div>
                     </td>
                   );
 
@@ -723,8 +808,12 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                           </td>
                           <td className="p-2">
                             <div className="flex items-center gap-1">
-                              <span>{s.name ?? <span className="text-muted-foreground/60">—</span>}</span>
-                              {s.parts.some((p) => p.competition) && <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                              <span>
+                                {s.name ?? <span className="text-muted-foreground/60">—</span>}
+                              </span>
+                              {s.parts.some((p) => p.competition) && (
+                                <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                              )}
                             </div>
                             {s.parts.some((p) => p.form || p.character) && (
                               <div className="mt-1 flex flex-wrap gap-1">
@@ -860,7 +949,12 @@ export function WeekGrid({ username, week, noContainer }: Props) {
               <>
                 <span className={cn("text-sm font-medium", isToday && "text-primary")}>
                   {t(`weekday.${weekdayNum}`)}
-                  <span className={cn("ml-1.5 text-xs font-normal", isToday ? "text-primary/60" : "text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "ml-1.5 text-xs font-normal",
+                      isToday ? "text-primary/60" : "text-muted-foreground",
+                    )}
+                  >
                     {dateFmt.format(d)}
                   </span>
                 </span>
@@ -885,7 +979,14 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                     {dayHeader}
                   </DroppableMobileDayHeader>
                 ) : (
-                  <div className={cn("flex items-center justify-between rounded py-1 px-1", isToday && "bg-primary/[0.04]")}>{dayHeader}</div>
+                  <div
+                    className={cn(
+                      "flex items-center justify-between rounded py-1 px-1",
+                      isToday && "bg-primary/[0.04]",
+                    )}
+                  >
+                    {dayHeader}
+                  </div>
                 )}
                 <SortableContext
                   items={ofDay.map((s) => s.id)}
@@ -942,7 +1043,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
         </DragOverlay>
       </DndContext>
 
-      <DailyVolumeChart sessions={sessions} days={days} />
+      <DailyVolumeChart sessions={statSessions} days={days} />
 
       {editing && user && (
         <SessionDialog
@@ -971,6 +1072,79 @@ export function WeekGrid({ username, week, noContainer }: Props) {
           markDonePending={markDone.isPending}
         />
       )}
+    </div>
+  );
+}
+
+function WeekGoals({
+  goals,
+  totals,
+  t,
+}: {
+  goals: Goals;
+  totals: Totals;
+  t: (key: string) => string;
+}) {
+  const rows: { label: string; target: number; actual: number; unit: string }[] = [];
+  if (goals.sessions_per_week > 0)
+    rows.push({
+      label: t("dashboard.goals.sessionsPerWeek"),
+      target: goals.sessions_per_week,
+      actual: totals.session_count,
+      unit: "",
+    });
+  if (goals.hours_per_week > 0)
+    rows.push({
+      label: t("dashboard.goals.hoursPerWeek"),
+      target: goals.hours_per_week,
+      actual: Math.round((totals.total_seconds / 3600) * 10) / 10,
+      unit: "h",
+    });
+  if (goals.km_per_week > 0)
+    rows.push({
+      label: t("dashboard.goals.kmPerWeek"),
+      target: goals.km_per_week,
+      actual: totals.total_distance_km,
+      unit: " km",
+    });
+
+  return (
+    <div className="mt-1 mb-4 rounded-lg border bg-card p-3">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {t("dashboard.goals.title")}
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {rows.map(({ label, target, actual, unit }) => {
+          const pct = Math.min(100, Math.round((actual / target) * 100));
+          const done = actual >= target;
+          return (
+            <div key={label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{label}</span>
+                <span
+                  className={cn(
+                    "font-medium tabular-nums",
+                    done && "text-emerald-600 dark:text-emerald-400",
+                  )}
+                >
+                  {Math.round(actual * 10) / 10}
+                  {unit} / {target}
+                  {unit}
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    done ? "bg-emerald-500" : "bg-primary",
+                  )}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

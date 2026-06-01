@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { monthSummaryQuery, monthSessionsQuery } from "@/lib/queries";
+import { monthSessionsQuery } from "@/lib/queries";
+import { computeTotals } from "@/lib/types";
 import { km, secondsToHmm } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
@@ -15,17 +16,7 @@ type Metric = "hours" | "km";
 export function MonthTable({ username, yyyymm }: { username: string; yyyymm: string }) {
   const { t, i18n } = useTranslation();
   const [metric, setMetric] = useState<Metric>("hours");
-
-  const { data } = useQuery(monthSummaryQuery(username, yyyymm));
-  const totals = data?.totals ?? {
-    session_count: 0,
-    total_seconds: 0,
-    total_distance_km: 0,
-    quality_sessions: 0,
-    by_form: {} as Record<string, number>,
-    avg_km_per_session: 0,
-    avg_seconds_per_session: 0,
-  };
+  const [onlyDone, setOnlyDone] = useState(false);
 
   const [year, month] = yyyymm.split("-").map(Number);
   const start = `${yyyymm}-01`;
@@ -33,9 +24,12 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
   const end = `${yyyymm}-${String(lastDay).padStart(2, "0")}`;
   const { data: sessions = [] } = useQuery(monthSessionsQuery(username, start, end));
 
+  const statSessions = onlyDone ? sessions.filter((s) => s.status === "done") : sessions;
+  const totals = computeTotals(statSessions);
+
   const byFormSeconds: Record<string, number> = {};
   const byFormKm: Record<string, number> = {};
-  for (const s of sessions) {
+  for (const s of statSessions) {
     for (const p of s.parts) {
       const f = p.form ?? "other";
       byFormSeconds[f] = (byFormSeconds[f] ?? 0) + (p.duration_seconds ?? 0);
@@ -55,13 +49,21 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
           to="/u/$username/month/$yyyymm"
           params={{ username, yyyymm: shiftYyyyMm(yyyymm, -1) }}
         >
-          <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </Link>
         <h2 className="text-lg font-semibold capitalize text-primary">{monthLabel}</h2>
         <Link to="/u/$username/month/$yyyymm" params={{ username, yyyymm: shiftYyyyMm(yyyymm, 1) }}>
-          <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </Link>
@@ -79,7 +81,26 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
         />
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <ToggleGroup
+          type="single"
+          value={onlyDone ? "done" : "all"}
+          onValueChange={(v) => v && setOnlyDone(v === "done")}
+          className="h-6 gap-0 rounded-full border bg-muted p-0.5"
+        >
+          <ToggleGroupItem
+            value="all"
+            className="h-5 rounded-full px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+          >
+            {t("summary.filterAll")}
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="done"
+            className="h-5 rounded-full px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+          >
+            {t("summary.filterDone")}
+          </ToggleGroupItem>
+        </ToggleGroup>
         <ToggleGroup
           type="single"
           value={metric}
@@ -103,7 +124,12 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
 
       <div className="grid gap-3 md:grid-cols-2">
         <FormDistributionChart totals={totals} />
-        <WeeklyVolumeChart username={username} yyyymm={yyyymm} metric={metric} />
+        <WeeklyVolumeChart
+          username={username}
+          yyyymm={yyyymm}
+          metric={metric}
+          onlyDone={onlyDone}
+        />
       </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card">
@@ -154,7 +180,9 @@ function Stat({ label, value }: { label: string; value: string }) {
       className="rounded-lg border bg-card px-4 py-3"
       style={{ borderLeft: "3px solid var(--primary)" }}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
       <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
     </div>
   );
