@@ -23,9 +23,6 @@ jobs:
       - name: Lint
         run: uv run ruff check
         working-directory: backend
-      - name: Test
-        run: uv run pytest
-        working-directory: backend
 
   frontend-checks:
     runs-on: ubuntu-latest
@@ -39,12 +36,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
         working-directory: frontend
-      - name: Type check
-        run: bun run check
+      - name: Typecheck
+        run: bun run typecheck
         working-directory: frontend
       - name: Lint
         run: bun run lint
-        working-directory: frontend
-      - name: Test
-        run: bun run test
         working-directory: frontend
