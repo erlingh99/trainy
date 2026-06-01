@@ -208,7 +208,10 @@
     "matchTo": "Match to:",
     "createNew": "Create new session",
     "skip": "Skip",
-    "willCreate": "Will create new session"
+    "willCreate": "Will create new session",
+    "checkDuplicates": "Check duplicates",
+    "duplicatesTitle": "Duplicate sessions",
+    "noDuplicates": "No duplicate sessions found."
   },
   "palette": {
     "title": "Color theme",

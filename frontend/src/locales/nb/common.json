@@ -208,7 +208,10 @@
     "matchTo": "Match til:",
     "createNew": "Opprett ny økt",
     "skip": "Hopp over",
-    "willCreate": "Oppretter ny økt"
+    "willCreate": "Oppretter ny økt",
+    "checkDuplicates": "Sjekk duplikater",
+    "duplicatesTitle": "Dupliserte økter",
+    "noDuplicates": "Ingen dupliserte økter funnet."
   },
   "palette": {
     "title": "Fargetema",

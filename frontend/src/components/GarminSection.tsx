@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { garminStatusQuery, garminConnect, garminMfa, garminDisconnect } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
+import { DuplicatesModal } from "./DuplicatesModal";
 import { GarminSyncModal } from "./GarminSyncModal";
 import {
   CheckCircle2,
@@ -42,6 +43,13 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
     end: string;
     autoCreate: boolean;
   } | null>(null);
+
+  // Duplicates state
+  const [dupPanelOpen, setDupPanelOpen] = useState(false);
+  const [dupFrom, setDupFrom] = useState("");
+  const [dupTo, setDupTo] = useState("");
+  const [dupModalOpen, setDupModalOpen] = useState(false);
+  const [dupConfig, setDupConfig] = useState<{ start: string; end: string } | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["garmin", "status", username] });
@@ -157,16 +165,65 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                 </div>
               )}
 
-              {/* Bulk import */}
+              {/* Bulk import + duplicates */}
               <div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 w-full text-xs"
-                  onClick={() => setBulkOpen((v) => !v)}
-                >
-                  {t("garmin.bulkImport")}
-                </Button>
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => setBulkOpen((v) => !v)}
+                  >
+                    {t("garmin.bulkImport")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => setDupPanelOpen((v) => !v)}
+                  >
+                    {t("garmin.checkDuplicates")}
+                  </Button>
+                </div>
+                {dupPanelOpen && (
+                  <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-muted-foreground">
+                          {t("garmin.from")}
+                        </label>
+                        <Input
+                          type="date"
+                          className="h-7 text-xs"
+                          value={dupFrom}
+                          onChange={(e) => setDupFrom(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] text-muted-foreground">
+                          {t("garmin.to")}
+                        </label>
+                        <Input
+                          type="date"
+                          className="h-7 text-xs"
+                          value={dupTo}
+                          onChange={(e) => setDupTo(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-7 w-full text-xs"
+                      disabled={!dupFrom || !dupTo}
+                      onClick={() => {
+                        setDupConfig({ start: dupFrom, end: dupTo });
+                        setDupModalOpen(true);
+                      }}
+                    >
+                      {t("garmin.checkDuplicates")}
+                    </Button>
+                  </div>
+                )}
                 {bulkOpen && (
                   <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2">
                     <div className="flex gap-2">
@@ -313,6 +370,16 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
             </form>
           )}
         </div>
+      )}
+
+      {dupModalOpen && dupConfig && (
+        <DuplicatesModal
+          username={username}
+          from={dupConfig.start}
+          to={dupConfig.end}
+          onClose={() => setDupModalOpen(false)}
+          onDeleted={invalidate}
+        />
       )}
 
       {syncModalOpen && syncConfig && (

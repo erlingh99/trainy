@@ -208,7 +208,10 @@
     "matchTo": "Matcha med:",
     "createNew": "Skapa nytt pass",
     "skip": "Hoppa över",
-    "willCreate": "Skapar nytt pass"
+    "willCreate": "Skapar nytt pass",
+    "checkDuplicates": "Kontrollera dubbletter",
+    "duplicatesTitle": "Duplicerade pass",
+    "noDuplicates": "Inga duplicerade pass hittades."
   },
   "palette": {
     "title": "Färgtema",
