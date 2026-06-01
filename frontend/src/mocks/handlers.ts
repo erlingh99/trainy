@@ -139,7 +139,8 @@ function monthRange(yyyymm: string): [string, string] {
 function aggregate(sessions: Session[]) {
   const allParts = sessions.flatMap((s) => s.parts);
   const total_seconds = allParts.reduce((a, p) => a + (p.duration_seconds || 0), 0);
-  const total_distance = allParts.reduce((a, p) => a + (p.distance_km || 0), 0);
+  const runningParts = allParts.filter((p) => p.form === "running" || p.form === "orienteering");
+  const total_distance = runningParts.reduce((a, p) => a + (p.distance_km || 0), 0);
   const quality = sessions.filter((s) =>
     s.parts.some(
       (p) =>
@@ -342,8 +343,10 @@ export const handlers = [
     const store = loadStore();
     const u = resolveUserByName(store, userName);
     if (!u) return HttpResponse.json({ detail: `Unknown user: ${userName}` }, { status: 404 });
+    const statusFilter = url.searchParams.get("status");
     const allSessions = store.sessions
       .filter((s) => s.user_id === u.id && s.date >= from && s.date <= to)
+      .filter((s) => !statusFilter || s.status === statusFilter)
       .sort((a, b) => a.date.localeCompare(b.date));
     const weeks = [];
     let cur = from || to;

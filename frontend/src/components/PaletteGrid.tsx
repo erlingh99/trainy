@@ -71,9 +71,7 @@ export function PaletteGrid({ value, onChange }: PaletteGridProps) {
             className="h-6 w-full max-w-[80px] flex-shrink-0 rounded"
             style={{ background: isCustom ? customSwatchColor(value!) : HUE_GRADIENT }}
           />
-          <span className="flex-1 text-left text-xs font-medium">
-            {t("palette.custom")}
-          </span>
+          <span className="flex-1 text-left text-xs font-medium">{t("palette.custom")}</span>
           {isCustom ? (
             <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
           ) : (

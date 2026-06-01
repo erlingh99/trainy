@@ -24,6 +24,36 @@ export type Session = {
   comment: string | null;
 };
 
+const QUALITY_INTENSITIES = new Set(["threshold", "vo2"]);
+
+export function computeTotals(sessions: Session[]): Totals {
+  const allParts = sessions.flatMap((s) => s.parts);
+  const total_seconds = allParts.reduce((a, p) => a + (p.duration_seconds ?? 0), 0);
+  const runningParts = allParts.filter((p) => p.form === "running" || p.form === "orienteering");
+  const total_distance_km =
+    Math.round(runningParts.reduce((a, p) => a + (p.distance_km ?? 0), 0) * 100) / 100;
+  const quality_sessions = sessions.filter((s) =>
+    s.parts.some((p) => QUALITY_INTENSITIES.has(p.intensity ?? "")),
+  ).length;
+  const by_form: Record<string, number> = {};
+  const by_character: Record<string, number> = {};
+  for (const p of allParts) {
+    if (p.form) by_form[p.form] = (by_form[p.form] ?? 0) + 1;
+    if (p.character) by_character[p.character] = (by_character[p.character] ?? 0) + 1;
+  }
+  const n = sessions.length;
+  return {
+    session_count: n,
+    total_seconds,
+    total_distance_km,
+    quality_sessions,
+    by_form,
+    by_character,
+    avg_km_per_session: n ? Math.round((total_distance_km / n) * 100) / 100 : 0,
+    avg_seconds_per_session: n ? Math.floor(total_seconds / n) : 0,
+  };
+}
+
 export function sessionDuration(s: Session): number | null {
   const t = s.parts.reduce((a, p) => a + (p.duration_seconds ?? 0), 0);
   return t > 0 ? t : null;

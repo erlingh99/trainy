@@ -76,18 +76,26 @@ export function SessionViewDialog({
         <div className="space-y-2">
           {s.parts.map((p, i) => (
             <div key={i} className="rounded-md border bg-muted/30 px-3 py-2 space-y-1.5">
-              {p.form && (
-                <p className="text-xs font-semibold">{t(`form.${p.form}`)}</p>
-              )}
+              {p.form && <p className="text-xs font-semibold">{t(`form.${p.form}`)}</p>}
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {p.duration_seconds != null && (
-                  <span>{t("session.duration")}: <span className="text-foreground tabular-nums">{secondsToHmm(p.duration_seconds)}</span></span>
+                  <span>
+                    {t("session.duration")}:{" "}
+                    <span className="text-foreground tabular-nums">
+                      {secondsToHmm(p.duration_seconds)}
+                    </span>
+                  </span>
                 )}
                 {p.distance_km != null && (
-                  <span>{t("session.distance")}: <span className="text-foreground tabular-nums">{km(p.distance_km)}</span></span>
+                  <span>
+                    {t("session.distance")}:{" "}
+                    <span className="text-foreground tabular-nums">{km(p.distance_km)}</span>
+                  </span>
                 )}
                 {p.rpe != null && (
-                  <span>{t("session.rpe")}: <span className="text-foreground">{p.rpe}</span></span>
+                  <span>
+                    {t("session.rpe")}: <span className="text-foreground">{p.rpe}</span>
+                  </span>
                 )}
               </div>
               {(p.character || p.intensity || p.surface || p.competition) && (

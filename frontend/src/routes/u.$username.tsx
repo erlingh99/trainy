@@ -48,7 +48,9 @@ function UserLayout() {
       {/* Palette bloom — fixed so it stays while scrolling */}
       <div
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.055]"
-        style={{ background: "radial-gradient(ellipse 55% 35% at 85% 0%, var(--primary), transparent)" }}
+        style={{
+          background: "radial-gradient(ellipse 55% 35% at 85% 0%, var(--primary), transparent)",
+        }}
         aria-hidden
       />
       <div className="relative z-10">

@@ -135,7 +135,9 @@ function UsersPage() {
                 : getPalette(u.palette).swatches[0];
               const paletteLabel = isCustomPalette(u.palette)
                 ? t("palette.custom")
-                : t(`palette.${getPalette(u.palette).id}` as never, { defaultValue: getPalette(u.palette).label });
+                : t(`palette.${getPalette(u.palette).id}` as never, {
+                    defaultValue: getPalette(u.palette).label,
+                  });
               return (
                 <li
                   key={u.id}

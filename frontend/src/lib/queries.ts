@@ -36,12 +36,12 @@ export const monthSessionsQuery = (user: string, start: string, end: string) =>
     enabled: Boolean(user && start && end),
   });
 
-export const seasonSummaryQuery = (user: string, from: string, to: string) =>
+export const seasonSummaryQuery = (user: string, from: string, to: string, onlyDone = false) =>
   queryOptions({
-    queryKey: ["summary", "season", user, from, to],
+    queryKey: ["summary", "season", user, from, to, onlyDone],
     queryFn: () =>
       api<SeasonSummary>(
-        `/api/summary/season?user=${encodeURIComponent(user)}&from=${from}&to=${to}`,
+        `/api/summary/season?user=${encodeURIComponent(user)}&from=${from}&to=${to}${onlyDone ? "&status=done" : ""}`,
       ),
     enabled: Boolean(user && from && to),
   });

@@ -116,7 +116,9 @@
     "monthTotal": "Månadstotalt",
     "distribution": "Träningsfördelning",
     "weeklyVolume": "Volym per vecka",
-    "dailyVolume": "Daglig volym"
+    "dailyVolume": "Daglig volym",
+    "filterAll": "Alla",
+    "filterDone": "Genomfört"
   },
   "compare": {
     "title": "Jämför träning",
