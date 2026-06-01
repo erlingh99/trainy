@@ -300,6 +300,7 @@ async def sync_preview(
     )
     planned = list(result.all())
 
+    activities.sort(key=lambda a: a.get("startTimeLocal") or a.get("startTimeGMT") or "")
     proposals = [map_activity(a, planned) for a in activities if (a.get("duration") or 0) >= 60]
     return [_proposal_to_out(p) for p in proposals]
 
@@ -359,7 +360,9 @@ async def sync_apply(
                 matched += 1
 
             elif item.action == "create":
-                # Find how many sessions exist on this date to assign session_no
+                # Find how many sessions exist on this date to assign session_no.
+                # Flush first so within-transaction creates on the same day are visible.
+                await db.flush()
                 result = await db.exec(
                     select(Session)
                     .where(Session.user_id == u.id)
