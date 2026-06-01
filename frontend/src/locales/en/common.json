@@ -46,6 +46,9 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "deleteConfirmTitle": "Delete session?",
+    "deleteConfirmDescription": "This action cannot be undone.",
+    "deleteConfirm": "Delete",
     "empty": "No session",
     "markDone": "Mark as done",
     "reorder": "Reorder sessions",
@@ -62,6 +65,8 @@
     "strength": "Strength",
     "cycling": "Cycling",
     "elliptical": "Elliptical",
+    "skiing": "Skiing",
+    "skating": "Skating",
     "other": "Other"
   },
   "character": {
@@ -90,6 +95,9 @@
     "gym": "Gym",
     "track": "Track",
     "treadmill": "Treadmill",
+    "classic": "Classic",
+    "skate": "Skate",
+    "ice": "Ice",
     "other": "Other"
   },
   "status": {

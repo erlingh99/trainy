@@ -57,6 +57,9 @@ import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { api } from "@/lib/api";
 
+// Strip the layout prefix ("d:" or "m:") from dnd-kit drag IDs to get the real session ID
+const toSessionId = (dragId: string | number) => String(dragId).replace(/^[dm]:/, "");
+
 // ── Sortable row (reorder mode only) ──────────────────────────────────────
 
 function SortableSessionRow({
@@ -75,7 +78,7 @@ function SortableSessionRow({
   markDonePending: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: s.id,
+    id: `d:${s.id}`,
   });
 
   const style: React.CSSProperties = {
@@ -321,7 +324,7 @@ function SortableMobileCard({
   markDonePending: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: s.id,
+    id: `m:${s.id}`,
   });
 
   const style: React.CSSProperties = {
@@ -423,7 +426,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
   );
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
-    setActiveId(String(active.id));
+    setActiveId(toSessionId(active.id));
   }, []);
 
   const handleDragOver = useCallback(
@@ -432,7 +435,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
         setHighlightedDay(null);
         return;
       }
-      const activeSession = sessions.find((s) => s.id === String(active.id));
+      const activeSession = sessions.find((s) => s.id === toSessionId(active.id));
       if (!activeSession) {
         setHighlightedDay(null);
         return;
@@ -442,7 +445,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
       if (overId.startsWith("day::")) {
         targetDate = overId.slice(5);
       } else {
-        const overSession = sessions.find((s) => s.id === overId);
+        const overSession = sessions.find((s) => s.id === toSessionId(overId));
         if (!overSession) {
           setHighlightedDay(null);
           return;
@@ -460,7 +463,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
       setHighlightedDay(null);
       if (!over || active.id === over.id) return;
 
-      const activeSession = sessions.find((s) => s.id === active.id);
+      const activeSession = sessions.find((s) => s.id === toSessionId(active.id));
       if (!activeSession) return;
 
       const overId = String(over.id);
@@ -470,7 +473,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
       if (overId.startsWith("day::")) {
         targetDate = overId.slice(5);
       } else {
-        overSession = sessions.find((s) => s.id === over.id);
+        overSession = sessions.find((s) => s.id === toSessionId(overId));
         if (!overSession) return;
         targetDate = overSession.date;
       }
@@ -480,8 +483,8 @@ export function WeekGrid({ username, week, noContainer }: Props) {
       if (sourceDate === targetDate && overSession) {
         // Same-day reorder
         const ofDay = sessionMap.get(sourceDate) ?? [];
-        const oldIdx = ofDay.findIndex((s) => s.id === active.id);
-        const newIdx = ofDay.findIndex((s) => s.id === over.id);
+        const oldIdx = ofDay.findIndex((s) => s.id === toSessionId(active.id));
+        const newIdx = ofDay.findIndex((s) => s.id === toSessionId(over.id));
         if (oldIdx === -1 || newIdx === -1 || oldIdx === newIdx) return;
 
         const reordered = arrayMove(ofDay, oldIdx, newIdx);
@@ -514,7 +517,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
         // Determine insertion index in the target day
         let insertIdx: number;
         if (overSession) {
-          insertIdx = targetDay.findIndex((s) => s.id === over.id);
+          insertIdx = targetDay.findIndex((s) => s.id === toSessionId(over.id));
           if (insertIdx === -1) insertIdx = targetDay.length;
         } else {
           insertIdx = targetDay.length; // drop on day header → append
@@ -736,7 +739,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                           </td>
                         </DroppableDayHeader>
                         <SortableContext
-                          items={ofDay.map((s) => s.id)}
+                          items={ofDay.map((s) => `d:${s.id}`)}
                           strategy={verticalListSortingStrategy}
                         >
                           {ofDay.map((s) => (
@@ -1005,7 +1008,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                   </div>
                 )}
                 <SortableContext
-                  items={ofDay.map((s) => s.id)}
+                  items={ofDay.map((s) => `m:${s.id}`)}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-1.5">

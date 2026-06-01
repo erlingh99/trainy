@@ -18,6 +18,8 @@ class SessionForm(StrEnum):
     strength = "strength"
     cycling = "cycling"
     elliptical = "elliptical"
+    skiing = "skiing"
+    skating = "skating"
     other = "other"
 
 
@@ -50,6 +52,9 @@ class SessionSurface(StrEnum):
     gym = "gym"
     track = "track"
     treadmill = "treadmill"
+    classic = "classic"
+    skate = "skate"
+    ice = "ice"
     other = "other"
 
 
@@ -84,6 +89,13 @@ VALID_SURFACES: dict[SessionForm, frozenset[SessionSurface]] = {
         }
     ),
     SessionForm.elliptical: frozenset({SessionSurface.gym}),
+    SessionForm.skiing: frozenset(
+        {
+            SessionSurface.classic,
+            SessionSurface.skate,
+        }
+    ),
+    SessionForm.skating: frozenset({SessionSurface.ice}),
     SessionForm.other: _ALL_SURFACES,
 }
 
@@ -125,6 +137,8 @@ VALID_CHARACTERS: dict[SessionForm, frozenset[SessionCharacter]] = {
             SessionCharacter.other,
         }
     ),
+    SessionForm.skiing: _ENDURANCE_CHARACTERS,
+    SessionForm.skating: _ENDURANCE_CHARACTERS,
     SessionForm.other: _ALL_CHARACTERS,
 }
 

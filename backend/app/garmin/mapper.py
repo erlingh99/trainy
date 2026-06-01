@@ -44,6 +44,16 @@ _FORM_MAP: dict[str, str] = {
     "elliptical": "elliptical",
     # Orienteering (Garmin has no dedicated type — users log as trail_running or other)
     "orienteering": "orienteering",
+    # Skiing
+    "cross_country_skiing": "skiing",
+    "cross_country_skiing_ws": "skiing",
+    "resort_skiing_snowboarding_ws": "skiing",
+    "backcountry_skiing": "skiing",
+    "skate_skiing": "skiing",
+    # Skating
+    "inline_skating": "skating",
+    "ice_skating": "skating",
+    "roller_skiing": "skiing",
 }
 
 # Surface hints from typeKey for running activities

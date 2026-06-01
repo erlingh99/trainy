@@ -50,6 +50,10 @@ export function SessionViewDialog({
     setEditOpen(false);
     onOpenChange(false);
   };
+  const handleEditDeleted = () => {
+    setEditOpen(false);
+    onOpenChange(false);
+  };
   const handleEditClose = (o: boolean) => {
     if (!o) setEditOpen(false);
     // Don't close the view dialog on cancel — user returns to view
@@ -182,6 +186,7 @@ export function SessionViewDialog({
           open={editOpen}
           onOpenChange={handleEditClose}
           onSaved={handleEditSaved}
+          onDeleted={handleEditDeleted}
           userId={userId}
           date={s.date}
           sessionNo={s.session_no}

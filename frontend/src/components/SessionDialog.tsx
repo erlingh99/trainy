@@ -3,6 +3,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { startTransition, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -82,6 +92,7 @@ type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSaved?: () => void;
+  onDeleted?: () => void;
   userId: string;
   date: string;
   sessionNo: number;
@@ -93,6 +104,7 @@ export function SessionDialog({
   open,
   onOpenChange,
   onSaved,
+  onDeleted,
   userId,
   date,
   sessionNo,
@@ -105,6 +117,7 @@ export function SessionDialog({
   const nameRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const [hasName, setHasName] = useState(!!existing?.name?.trim());
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState({
     parts:
       existing && existing.parts.length > 0
@@ -162,6 +175,7 @@ export function SessionDialog({
     mutationFn: () => api<void>(`/api/sessions/${existing!.id}`, { method: "DELETE" }),
     onSuccess: () => {
       invalidate();
+      onDeleted?.();
       onOpenChange(false);
     },
   });
@@ -322,7 +336,7 @@ export function SessionDialog({
             {existing && (
               <Button
                 variant="destructive"
-                onClick={() => remove.mutate()}
+                onClick={() => setConfirmDelete(true)}
                 disabled={remove.isPending}
               >
                 {t("session.delete")}
@@ -339,6 +353,24 @@ export function SessionDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("session.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("session.deleteConfirmDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("session.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => remove.mutate()}
+            >
+              {t("session.deleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

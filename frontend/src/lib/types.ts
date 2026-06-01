@@ -95,6 +95,8 @@ export const FORMS = [
   "strength",
   "cycling",
   "elliptical",
+  "skiing",
+  "skating",
   "other",
 ] as const;
 
@@ -123,6 +125,9 @@ export const SURFACES = [
   "gym",
   "track",
   "treadmill",
+  "classic",
+  "skate",
+  "ice",
   "other",
 ] as const;
 
@@ -162,6 +167,16 @@ export const FORM_RULES: Record<SessionForm, FormRules> = {
     characters: ["distance", "interval", "tempo", "other"],
     surfaces: ["gym"],
     hasDistance: false,
+  },
+  skiing: {
+    characters: ["distance", "interval", "tempo", "fartlek", "other"],
+    surfaces: ["classic", "skate"],
+    hasDistance: true,
+  },
+  skating: {
+    characters: ["distance", "interval", "tempo", "fartlek", "other"],
+    surfaces: ["ice"],
+    hasDistance: true,
   },
   other: {
     characters: CHARACTERS,
@@ -235,5 +250,7 @@ export const FORM_COLORS: Record<string, string> = {
   strength: "#8b5cf6",
   cycling: "#3b82f6",
   elliptical: "#06b6d4",
+  skiing: "#0ea5e9",
+  skating: "#f43f5e",
   other: "#64748b",
 };

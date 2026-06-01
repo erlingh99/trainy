@@ -46,6 +46,9 @@
     "save": "Spara",
     "cancel": "Avbryt",
     "delete": "Ta bort",
+    "deleteConfirmTitle": "Ta bort passet?",
+    "deleteConfirmDescription": "Den här åtgärden kan inte ångras.",
+    "deleteConfirm": "Ta bort",
     "empty": "Inget pass",
     "markDone": "Markera genomfört",
     "reorder": "Ändra ordning",
@@ -62,6 +65,8 @@
     "strength": "Styrka",
     "cycling": "Cykling",
     "elliptical": "Crosstrainer",
+    "skiing": "Längdskidor",
+    "skating": "Skridskor",
     "other": "Annat"
   },
   "character": {
@@ -90,6 +95,9 @@
     "gym": "Gym",
     "track": "Bana",
     "treadmill": "Löpband",
+    "classic": "Klassisk",
+    "skate": "Skate",
+    "ice": "Is",
     "other": "Annat"
   },
   "status": {
