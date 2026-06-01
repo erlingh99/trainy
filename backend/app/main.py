@@ -10,6 +10,7 @@ from .routers import summary as summary_router
 from .routers import users as users_router
 from .routers import health as health_router
 from .routers import goals as goals_router
+from .routers import garmin as garmin_router
 from .config import FRONTEND_DIST
 from .database.db import init_db
 
@@ -32,6 +33,7 @@ app.include_router(sessions_router.router)
 app.include_router(summary_router.router)
 app.include_router(goals_router.router)
 app.include_router(health_router.router)
+app.include_router(garmin_router.router)
 
 # Catch-all route for SPA - must be last
 @app.get("/{full_path:path}", include_in_schema=False)

@@ -11,6 +11,9 @@ dependencies = [
     "pydantic>=2.13.4",
     "sqlmodel>=0.0.38",
     "uvicorn[standard]>=0.48.0",
+    "requests>=2.32.0",
+    "curl-cffi>=0.7.0",
+    "cryptography>=48.0.0",
 ]
 
 [dependency-groups]

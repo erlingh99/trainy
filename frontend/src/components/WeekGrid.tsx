@@ -23,7 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { weekDays, isoDate, shiftIsoWeek, currentIsoWeek, weekRangeLabel } from "@/lib/week";
-import { weekSummaryQuery, usersQuery, goalsQuery } from "@/lib/queries";
+import { weekSummaryQuery, usersQuery, goalsQuery, garminStatusQuery } from "@/lib/queries";
 import { km, secondsToHmm } from "@/lib/format";
 import {
   sessionDuration,
@@ -47,9 +47,11 @@ import {
   Plus,
   Route,
   Trophy,
+  Watch,
 } from "lucide-react";
 import { SessionDialog } from "./SessionDialog";
 import { SessionViewDialog, StatusBadge, Chip } from "./SessionViewDialog";
+import { GarminSyncModal } from "./GarminSyncModal";
 import { DailyVolumeChart } from "./TrainingCharts";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -392,6 +394,9 @@ export function WeekGrid({ username, week, noContainer }: Props) {
   const [reordering, setReordering] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [highlightedDay, setHighlightedDay] = useState<string | null>(null);
+  const [garminSyncOpen, setGarminSyncOpen] = useState(false);
+
+  const { data: garminStatus } = useQuery(garminStatusQuery(username));
 
   const today = new Date().toISOString().slice(0, 10);
   const openViewing = useCallback((s: Session) => {
@@ -629,6 +634,17 @@ export function WeekGrid({ username, week, noContainer }: Props) {
           >
             {t("nav.today")}
           </Button>
+          {garminStatus?.connected && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Sync this week from Garmin"
+              onClick={() => setGarminSyncOpen(true)}
+            >
+              <Watch className="h-4 w-4" />
+            </Button>
+          )}
           <div className="ml-auto">
             <ToggleGroup
               type="single"
@@ -1070,6 +1086,21 @@ export function WeekGrid({ username, week, noContainer }: Props) {
             setViewing(null);
           }}
           markDonePending={markDone.isPending}
+        />
+      )}
+
+      {garminSyncOpen && summary && (
+        <GarminSyncModal
+          username={username}
+          startDate={summary.start}
+          endDate={summary.end}
+          autoCreate={false}
+          onClose={() => setGarminSyncOpen(false)}
+          onComplete={() => {
+            setGarminSyncOpen(false);
+            qc.invalidateQueries({ queryKey: ["summary", "week"] });
+            qc.invalidateQueries({ queryKey: ["summary", "month"] });
+          }}
         />
       )}
     </div>

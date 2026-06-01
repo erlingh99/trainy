@@ -230,3 +230,20 @@ class GoalUpdate(SQLModel):
 
 class SessionReorder(SQLModel):
     ids: list[str]
+
+
+class GarminCredentials(SQLModel, table=True):
+    __tablename__ = "garmin_credentials"
+    user_id: str = Field(primary_key=True, foreign_key="users.id")
+    garmin_username: str
+    garmin_password: str
+    di_token: Optional[str] = None
+    di_refresh_token: Optional[str] = None
+    di_client_id: Optional[str] = None
+    token_expires_at: Optional[datetime] = None
+    mfa_pending: bool = False
+    mfa_state: Optional[str] = None
+    last_sync_at: Optional[datetime] = None
+    last_sync_error: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

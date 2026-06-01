@@ -193,6 +193,42 @@ export type Goals = {
   km_per_week: number;
 };
 
+// ── Garmin integration ────────────────────────────────────────────────────────
+
+export type GarminStatus = {
+  connected: boolean;
+  garmin_username: string | null;
+  last_sync_at: string | null;
+  last_sync_error: string | null;
+  mfa_pending: boolean;
+};
+
+export type GarminCandidateSession = {
+  id: string;
+  name: string | null;
+  parts: SessionPart[];
+};
+
+export type ActivityProposal = {
+  garmin_activity_id: number;
+  date: string; // YYYY-MM-DD
+  form: string | null;
+  duration_seconds: number;
+  distance_km: number | null;
+  activity_name: string | null;
+  match_status: "matched" | "ambiguous" | "unmatched";
+  matched_session_id: string | null;
+  candidate_sessions: GarminCandidateSession[];
+  proposed_action: "match" | "create" | "skip";
+};
+
+export type GarminSyncResult = {
+  matched: number;
+  created: number;
+  skipped: number;
+  errors: string[];
+};
+
 export const FORM_COLORS: Record<string, string> = {
   running: "#10b981",
   orienteering: "#f97316",
