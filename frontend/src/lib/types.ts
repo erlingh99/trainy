@@ -231,7 +231,7 @@ export type ActivityProposal = {
   duration_seconds: number;
   distance_km: number | null;
   activity_name: string | null;
-  match_status: "matched" | "ambiguous" | "unmatched";
+  match_status: "matched" | "ambiguous" | "unmatched" | "already_done";
   matched_session_id: string | null;
   candidate_sessions: GarminCandidateSession[];
   proposed_action: "match" | "create" | "skip";

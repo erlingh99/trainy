@@ -20,7 +20,7 @@ import type { ActivityProposal, GarminSyncResult } from "@/lib/types";
 import { secondsToHmm, km } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { CheckCircle, CircleDot, HelpCircle, Loader2 } from "lucide-react";
+import { CheckCircle, CircleDot, HelpCircle, Loader2, CheckCircle2 } from "lucide-react";
 
 type Props = {
   username: string;
@@ -78,7 +78,8 @@ export function GarminSyncModal({
       .then((proposals) => {
         setItems(
           proposals.map((p) => {
-            const forceSkip = !autoCreate && p.match_status === "unmatched";
+            const forceSkip =
+              p.match_status === "already_done" || (!autoCreate && p.match_status === "unmatched");
             const action: "match" | "create" | "skip" = forceSkip
               ? "skip"
               : p.proposed_action === "skip"
@@ -111,14 +112,18 @@ export function GarminSyncModal({
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [items]);
 
+  const resolveActivateAction = (it: ItemState): "match" | "create" | "skip" => {
+    if (it.proposal.match_status === "already_done") return "match";
+    return it.proposal.proposed_action !== "skip" ? it.proposal.proposed_action : "create";
+  };
+
   const toggleItem = (idx: number) => {
     setItems((prev) =>
       prev.map((it, i) => {
         if (i !== idx) return it;
         const isActive = it.action !== "skip";
         if (isActive) return { ...it, checked: false, action: "skip" };
-        const action: "match" | "create" | "skip" =
-          it.proposal.proposed_action !== "skip" ? it.proposal.proposed_action : "create";
+        const action = resolveActivateAction(it);
         return { ...it, checked: true, action };
       }),
     );
@@ -130,8 +135,7 @@ export function GarminSyncModal({
       prev.map((it, i) => {
         if (!indices.includes(i)) return it;
         if (allChecked) return { ...it, checked: false, action: "skip" };
-        const action: "match" | "create" | "skip" =
-          it.proposal.proposed_action !== "skip" ? it.proposal.proposed_action : "create";
+        const action = resolveActivateAction(it);
         return { ...it, checked: true, action };
       }),
     );
@@ -330,6 +334,8 @@ function WeekHeader({
 function StatusIcon({ status }: { status: ActivityProposal["match_status"] }) {
   if (status === "matched")
     return <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />;
+  if (status === "already_done")
+    return <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />;
   if (status === "ambiguous") return <HelpCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
   return <CircleDot className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
 }
@@ -352,6 +358,7 @@ function ActivityRow({
   const rowClass = cn(
     "flex items-start gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors",
     p.match_status === "matched" && isChecked && "border-emerald-200 bg-emerald-50/50",
+    p.match_status === "already_done" && isChecked && "border-blue-200 bg-blue-50/50",
     p.match_status === "ambiguous" && "border-amber-200 bg-amber-50/50",
     p.match_status === "unmatched" && isChecked && "border-border bg-muted/30",
     !isChecked && "opacity-50",
@@ -376,6 +383,14 @@ function ActivityRow({
           {p.distance_km != null && <span>{km(p.distance_km)}</span>}
           {p.form && <span className="capitalize">{p.form}</span>}
         </div>
+
+        {p.match_status === "already_done" && !isChecked && (
+          <p className="mt-0.5 text-[10px] text-blue-600">{t("garmin.alreadyDone")}</p>
+        )}
+
+        {p.match_status === "already_done" && isChecked && (
+          <p className="mt-0.5 text-[10px] text-blue-600">{t("garmin.updatesSession")}</p>
+        )}
 
         {p.match_status === "matched" && isChecked && (
           <p className="mt-0.5 text-[10px] text-emerald-700">{t("garmin.updatesSession")}</p>

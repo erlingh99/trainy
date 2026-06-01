@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { startTransition, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { hmmToSeconds, secondsToHmm } from "@/lib/format";
+import { usersQuery } from "@/lib/queries";
 import {
   FORMS,
   INTENSITIES,
@@ -113,11 +114,15 @@ export function SessionDialog({
 }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { data: allUsers } = useQuery(usersQuery());
 
   const nameRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const [hasName, setHasName] = useState(!!existing?.name?.trim());
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [buddies, setBuddies] = useState<string[]>([]);
+  const [buddyInput, setBuddyInput] = useState("");
+  const [buddyError, setBuddyError] = useState<string | null>(null);
   const [form, setForm] = useState({
     parts:
       existing && existing.parts.length > 0
@@ -130,6 +135,28 @@ export function SessionDialog({
     qc.invalidateQueries({ queryKey: ["summary", "week"] });
     qc.invalidateQueries({ queryKey: ["summary", "month"] });
     qc.invalidateQueries({ queryKey: ["sessions"] });
+  };
+
+  const currentUserName = allUsers?.find((u) => u.id === userId)?.name;
+
+  const addBuddy = () => {
+    const name = buddyInput.trim();
+    if (!name) return;
+    if (name === currentUserName) {
+      setBuddyError(t("session.buddySelf"));
+      return;
+    }
+    if (buddies.includes(name)) {
+      setBuddyInput("");
+      return;
+    }
+    if (!allUsers?.some((u) => u.name === name)) {
+      setBuddyError(t("session.buddyNotFound"));
+      return;
+    }
+    setBuddies((prev) => [...prev, name]);
+    setBuddyInput("");
+    setBuddyError(null);
   };
 
   const isValid =
@@ -162,7 +189,10 @@ export function SessionDialog({
           json: buildPayload(),
         });
       }
-      return api<Session>(`/api/sessions`, { method: "POST", json: buildPayload() });
+      return api<Session>(`/api/sessions`, {
+        method: "POST",
+        json: { ...buildPayload(), buddy_usernames: buddies },
+      });
     },
     onSuccess: () => {
       invalidate();
@@ -330,6 +360,60 @@ export function SessionDialog({
           <Field label={t("session.comment")}>
             <Textarea ref={commentRef} rows={2} defaultValue={existing?.comment ?? ""} />
           </Field>
+
+          {!existing && (
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground">{t("session.buddies")}</span>
+              <div className="flex gap-2">
+                <Input
+                  placeholder={t("session.buddyPlaceholder")}
+                  value={buddyInput}
+                  onChange={(e) => {
+                    setBuddyInput(e.target.value);
+                    setBuddyError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addBuddy();
+                    }
+                  }}
+                  className="h-8 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addBuddy}
+                  className="shrink-0 gap-1.5"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  {t("session.addBuddy")}
+                </Button>
+              </div>
+              {buddyError && <p className="text-xs text-destructive">{buddyError}</p>}
+              {buddies.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {buddies.map((name) => (
+                    <span
+                      key={name}
+                      className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+                    >
+                      {name}
+                      <button
+                        type="button"
+                        onClick={() => setBuddies((prev) => prev.filter((b) => b !== name))}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label={`Remove ${name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter className="flex-row items-center justify-between gap-2">
           <div>

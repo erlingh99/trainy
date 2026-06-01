@@ -57,7 +57,12 @@
     "part": "Del",
     "addPart": "Lägg till del",
     "competition": "Tävling",
-    "intensity": "Intensitet"
+    "intensity": "Intensitet",
+    "buddies": "Träningskompisar",
+    "addBuddy": "Lägg till",
+    "buddyPlaceholder": "Användarnamn…",
+    "buddyNotFound": "Användaren hittades inte",
+    "buddySelf": "Kan inte lägga till dig själv"
   },
   "form": {
     "running": "Löpning",
@@ -204,6 +209,7 @@
     "importing": "Importerar…",
     "done": "Klar",
     "close": "Stäng",
+    "alreadyDone": "Redan slutförd — hoppas över",
     "updatesSession": "→ Uppdaterar planerat pass",
     "matchTo": "Matcha med:",
     "createNew": "Skapa nytt pass",

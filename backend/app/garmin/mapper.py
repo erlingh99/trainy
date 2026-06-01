@@ -85,7 +85,7 @@ class ActivityProposal:
     duration_seconds: int
     distance_km: Optional[float]
     activity_name: Optional[str]
-    match_status: Literal["matched", "ambiguous", "unmatched"]
+    match_status: Literal["matched", "ambiguous", "unmatched", "already_done"]
     matched_session_id: Optional[str]
     candidate_sessions: list[CandidateSession]
     proposed_action: Literal["match", "create", "skip"]
@@ -152,11 +152,12 @@ def activity_to_part(activity: dict) -> dict:
     return part
 
 
-def map_activity(activity: dict, planned_sessions: list[Session]) -> ActivityProposal:
+def map_activity(activity: dict, existing_sessions: list[Session]) -> ActivityProposal:
     """
-    Propose an action for one Garmin activity given the current planned sessions.
+    Propose an action for one Garmin activity given the current existing sessions.
 
     Match logic:
+    - If a done session on the same date with matching form exists → already_done (proposed: skip)
     - Find planned sessions on the same date with a matching form in parts[0].
     - 0 candidates → unmatched (proposed: create)
     - 1 candidate  → matched (proposed: match)
@@ -171,8 +172,29 @@ def map_activity(activity: dict, planned_sessions: list[Session]) -> ActivityPro
     name = make_session_name(activity)
     activity_id = int(activity.get("activityId") or 0)
 
+    done_matches = [
+        s for s in existing_sessions
+        if s.date == act_date
+        and s.status == SessionStatus.done
+        and (not s.parts or s.parts[0].get("form") == form)
+    ]
+    if done_matches:
+        done_session = done_matches[0]
+        return ActivityProposal(
+            garmin_activity_id=activity_id,
+            date=act_date,
+            form=form,
+            duration_seconds=duration,
+            distance_km=dist,
+            activity_name=name,
+            match_status="already_done",
+            matched_session_id=done_session.id,
+            candidate_sessions=[CandidateSession(id=done_session.id, name=done_session.name, parts=done_session.parts)],
+            proposed_action="skip",
+        )
+
     candidates = [
-        s for s in planned_sessions
+        s for s in existing_sessions
         if s.date == act_date
         and s.status == SessionStatus.planned
         and (not s.parts or s.parts[0].get("form") == form)
@@ -182,7 +204,7 @@ def map_activity(activity: dict, planned_sessions: list[Session]) -> ActivityPro
     ]
 
     if form is None:
-        status: Literal["matched", "ambiguous", "unmatched"] = "ambiguous"
+        status: Literal["matched", "ambiguous", "unmatched", "already_done"] = "ambiguous"
         matched_id = None
         action: Literal["match", "create", "skip"] = "skip"
     elif len(candidates) == 1:

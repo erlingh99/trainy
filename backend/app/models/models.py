@@ -216,6 +216,7 @@ class SessionCreate(SQLModel):
     parts: list[SessionPart] = []
     status: SessionStatus = SessionStatus.planned
     comment: Optional[str] = None
+    buddy_usernames: list[str] = []
 
 
 class SessionUpdate(SQLModel):

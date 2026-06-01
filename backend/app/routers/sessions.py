@@ -45,8 +45,31 @@ async def list_sessions(
 async def create_session(payload: SessionCreate, db: AsyncSession = Depends(get_session)):
     if not await db.get(User, payload.user_id):
         raise HTTPException(404, "Unknown user_id")
-    s = Session(**payload.model_dump())
+    s = Session(**payload.model_dump(exclude={"buddy_usernames"}))
     db.add(s)
+
+    for username in payload.buddy_usernames:
+        buddy_result = await db.exec(select(User).where(User.name == username))
+        buddy = buddy_result.first()
+        if not buddy or buddy.id == payload.user_id:
+            continue
+        last_result = await db.exec(
+            select(Session)
+            .where(Session.user_id == buddy.id)
+            .where(Session.date == s.date)
+            .order_by(col(Session.session_no).desc())
+        )
+        last = last_result.first()
+        db.add(Session(
+            user_id=buddy.id,
+            date=s.date,
+            session_no=(last.session_no + 1) if last else 1,
+            name=s.name,
+            parts=s.parts,
+            status=SessionStatus.planned,
+            comment=s.comment,
+        ))
+
     return s
 
 

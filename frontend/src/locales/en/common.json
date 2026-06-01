@@ -57,7 +57,12 @@
     "part": "Part",
     "addPart": "Add part",
     "competition": "Competition",
-    "intensity": "Intensity"
+    "intensity": "Intensity",
+    "buddies": "Training buddies",
+    "addBuddy": "Add",
+    "buddyPlaceholder": "Username…",
+    "buddyNotFound": "User not found",
+    "buddySelf": "Can't add yourself"
   },
   "form": {
     "running": "Running",
@@ -204,6 +209,7 @@
     "importing": "Importing…",
     "done": "Done",
     "close": "Close",
+    "alreadyDone": "Already completed — will skip",
     "updatesSession": "→ Updates planned session",
     "matchTo": "Match to:",
     "createNew": "Create new session",

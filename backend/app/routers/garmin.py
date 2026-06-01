@@ -289,19 +289,19 @@ async def sync_preview(
     _apply_cache_to_creds(updated_cache, creds)
     db.add(creds)
 
-    # Load planned sessions in the range for matching
+    # Load planned and done sessions in the range for matching
     result = await db.exec(
         select(Session)
         .where(Session.user_id == u.id)
         .where(Session.date >= payload.start_date)
         .where(Session.date <= payload.end_date)
-        .where(col(Session.status) == SessionStatus.planned)
+        .where(col(Session.status).in_([SessionStatus.planned, SessionStatus.done]))
         .order_by(col(Session.date), col(Session.session_no))
     )
-    planned = list(result.all())
+    existing = list(result.all())
 
     activities.sort(key=lambda a: a.get("startTimeLocal") or a.get("startTimeGMT") or "")
-    proposals = [map_activity(a, planned) for a in activities if (a.get("duration") or 0) >= 60]
+    proposals = [map_activity(a, existing) for a in activities if (a.get("duration") or 0) >= 60]
     return [_proposal_to_out(p) for p in proposals]
 
 

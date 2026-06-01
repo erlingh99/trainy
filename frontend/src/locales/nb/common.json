@@ -57,7 +57,12 @@
     "part": "Del",
     "addPart": "Legg til del",
     "competition": "Konkurranse",
-    "intensity": "Intensitet"
+    "intensity": "Intensitet",
+    "buddies": "Treningsvenner",
+    "addBuddy": "Legg til",
+    "buddyPlaceholder": "Brukernavn…",
+    "buddyNotFound": "Brukeren ble ikke funnet",
+    "buddySelf": "Kan ikke legge til deg selv"
   },
   "form": {
     "running": "Løping",
@@ -204,6 +209,7 @@
     "importing": "Importerer…",
     "done": "Ferdig",
     "close": "Lukk",
+    "alreadyDone": "Allerede fullført — hoppes over",
     "updatesSession": "→ Oppdaterer planlagt økt",
     "matchTo": "Match til:",
     "createNew": "Opprett ny økt",
