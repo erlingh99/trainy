@@ -117,6 +117,7 @@ VALID_CHARACTERS: dict[SessionForm, frozenset[SessionCharacter]] = {
             SessionCharacter.middle,
             SessionCharacter.technique,
             SessionCharacter.interval,
+            SessionCharacter.distance,
             SessionCharacter.other,
         }
     ),
