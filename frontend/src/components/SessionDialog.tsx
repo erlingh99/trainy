@@ -122,7 +122,6 @@ export function SessionDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [buddies, setBuddies] = useState<string[]>([]);
   const [buddyInput, setBuddyInput] = useState("");
-  const [buddyError, setBuddyError] = useState<string | null>(null);
   const [form, setForm] = useState({
     parts:
       existing && existing.parts.length > 0
@@ -140,23 +139,9 @@ export function SessionDialog({
   const currentUserName = allUsers?.find((u) => u.id === userId)?.name;
 
   const addBuddy = () => {
-    const name = buddyInput.trim();
-    if (!name) return;
-    if (name === currentUserName) {
-      setBuddyError(t("session.buddySelf"));
-      return;
-    }
-    if (buddies.includes(name)) {
-      setBuddyInput("");
-      return;
-    }
-    if (!allUsers?.some((u) => u.name === name)) {
-      setBuddyError(t("session.buddyNotFound"));
-      return;
-    }
-    setBuddies((prev) => [...prev, name]);
+    if (!buddyInput) return;
+    setBuddies((prev) => [...prev, buddyInput]);
     setBuddyInput("");
-    setBuddyError(null);
   };
 
   const isValid =
@@ -365,33 +350,32 @@ export function SessionDialog({
             <div className="space-y-2">
               <span className="text-xs text-muted-foreground">{t("session.buddies")}</span>
               <div className="flex gap-2">
-                <Input
-                  placeholder={t("session.buddyPlaceholder")}
-                  value={buddyInput}
-                  onChange={(e) => {
-                    setBuddyInput(e.target.value);
-                    setBuddyError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addBuddy();
-                    }
-                  }}
-                  className="h-8 text-sm"
-                />
+                <Select value={buddyInput} onValueChange={setBuddyInput}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder={t("session.buddyPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(allUsers ?? [])
+                      .filter((u) => u.name !== currentUserName && !buddies.includes(u.name))
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.name}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={addBuddy}
+                  disabled={!buddyInput}
                   className="shrink-0 gap-1.5"
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   {t("session.addBuddy")}
                 </Button>
               </div>
-              {buddyError && <p className="text-xs text-destructive">{buddyError}</p>}
               {buddies.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {buddies.map((name) => (
