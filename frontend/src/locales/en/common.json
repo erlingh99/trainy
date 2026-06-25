@@ -88,9 +88,11 @@
     "other": "Other"
   },
   "intensity": {
-    "threshold": "Threshold",
-    "vo2": "VO2",
-    "recovery": "Recovery"
+    "recovery": "Recovery (i1)",
+    "flow": "Flow (i2)",
+    "threshold": "Threshold (i3)",
+    "vo2": "VO2 (i4)",
+    "max": "Max (i5)"
   },
   "surface": {
     "trail": "Trail",

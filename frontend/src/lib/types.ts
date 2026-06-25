@@ -24,7 +24,7 @@ export type Session = {
   comment: string | null;
 };
 
-const QUALITY_INTENSITIES = new Set(["threshold", "vo2"]);
+const QUALITY_INTENSITIES = new Set(["threshold", "vo2", "max"]);
 
 export function computeTotals(sessions: Session[]): Totals {
   const allParts = sessions.flatMap((s) => s.parts);
@@ -33,7 +33,7 @@ export function computeTotals(sessions: Session[]): Totals {
   const total_distance_km =
     Math.round(runningParts.reduce((a, p) => a + (p.distance_km ?? 0), 0) * 100) / 100;
   const quality_sessions = sessions.filter((s) =>
-    s.parts.some((p) => QUALITY_INTENSITIES.has(p.intensity ?? "")),
+    s.parts.some((p) => QUALITY_INTENSITIES.has(p.intensity ?? "") || p.competition),
   ).length;
   const by_form: Record<string, number> = {};
   const by_character: Record<string, number> = {};
@@ -114,7 +114,7 @@ export const CHARACTERS = [
   "other",
 ] as const;
 
-export const INTENSITIES = ["threshold", "vo2", "recovery"] as const;
+export const INTENSITIES = ["recovery", "flow", "threshold", "vo2", "max"] as const;
 export type SessionIntensity = (typeof INTENSITIES)[number];
 
 export const SURFACES = [

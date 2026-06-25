@@ -88,9 +88,11 @@
     "other": "Annat"
   },
   "intensity": {
-    "threshold": "Tröskel",
-    "vo2": "VO2",
-    "recovery": "Återhämtning"
+    "recovery": "Återhämtning (i1)",
+    "flow": "Flyt (i2)",
+    "threshold": "Tröskel (i3)",
+    "vo2": "VO2 (i4)",
+    "max": "Max (i5)"
   },
   "surface": {
     "trail": "Stig",

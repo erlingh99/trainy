@@ -5,8 +5,7 @@ import { http, HttpResponse } from "msw";
 import type { Session, User, Goals } from "@/lib/types";
 
 const STORAGE_KEY = "mock-backend-v1";
-const QUALITY_CHARACTERS = new Set(["interval", "tempo", "fartlek", "long"]);
-const QUALITY_INTENSITIES = new Set(["threshold", "vo2"]);
+const QUALITY_INTENSITIES = new Set(["threshold", "vo2", "max"]);
 
 type Store = { users: User[]; sessions: Session[]; goals: Record<string, Goals> };
 
@@ -142,10 +141,7 @@ function aggregate(sessions: Session[]) {
   const runningParts = allParts.filter((p) => p.form === "running" || p.form === "orienteering");
   const total_distance = runningParts.reduce((a, p) => a + (p.distance_km || 0), 0);
   const quality = sessions.filter((s) =>
-    s.parts.some(
-      (p) =>
-        QUALITY_CHARACTERS.has(p.character || "") || QUALITY_INTENSITIES.has(p.intensity || ""),
-    ),
+    s.parts.some((p) => QUALITY_INTENSITIES.has(p.intensity || "") || p.competition),
   ).length;
   const by_form: Record<string, number> = {};
   const by_character: Record<string, number> = {};
