@@ -39,9 +39,11 @@ class SessionCharacter(StrEnum):
 
 
 class SessionIntensity(StrEnum):
+    recovery = "recovery"
+    flow = "flow"
     threshold = "threshold"
     vo2 = "vo2"
-    recovery = "recovery"
+    max = "max"
 
 
 class SessionSurface(StrEnum):

@@ -88,9 +88,11 @@
     "other": "Annet"
   },
   "intensity": {
-    "threshold": "Terskel",
-    "vo2": "VO2",
-    "recovery": "Restitusjon"
+    "recovery": "Restitusjon (i1)",
+    "flow": "Flyt (i2)",
+    "threshold": "Terskel (i3)",
+    "vo2": "VO2 (i4)",
+    "max": "Maks (i5)"
   },
   "surface": {
     "trail": "Sti",

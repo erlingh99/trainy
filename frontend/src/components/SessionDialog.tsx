@@ -70,9 +70,7 @@ function partFromExisting(p: SessionPart): PartState {
   const form = p.form ?? "running";
   const rules = formRules(form);
   const character =
-    p.character && (rules.characters as readonly string[]).includes(p.character)
-      ? p.character
-      : rules.characters[0];
+    p.character && (rules.characters as readonly string[]).includes(p.character) ? p.character : "";
   const surface =
     p.surface && (rules.surfaces as readonly string[]).includes(p.surface)
       ? p.surface
@@ -259,7 +257,7 @@ export function SessionDialog({
                             onChange={(v) => {
                               const r = formRules(v);
                               const patch: Partial<PartState> = { form: v };
-                              if (!r.characters.includes(p.character as never))
+                              if (p.character && !r.characters.includes(p.character as never))
                                 patch.character = r.characters[0];
                               if (!r.surfaces.includes(p.surface as never))
                                 patch.surface = r.surfaces[0];
@@ -276,6 +274,7 @@ export function SessionDialog({
                             onChange={(v) => updatePart(i, { character: v })}
                             options={rules.characters as unknown as string[]}
                             ns="character"
+                            nullable
                           />
                         </Field>
                         <Field label={t("session.intensity")}>

@@ -63,6 +63,10 @@ _SURFACE_MAP: dict[str, str] = {
     "track_running": "track",
 }
 
+# Terrain/trail running defaults to running, but should match a planned
+# orienteering session on the same day when one exists.
+_TERRAIN_RUNNING_KEYS = {"trail_running"}
+
 # Forms where distance is not meaningful
 _NO_DISTANCE_FORMS = {"strength", "elliptical"}
 
@@ -166,6 +170,18 @@ def map_activity(activity: dict, existing_sessions: list[Session]) -> ActivityPr
     """
     act_date = activity_date(activity)
     form = _detect_form(activity)
+    type_key = (activity.get("activityType") or {}).get("typeKey", "").lower()
+    # Terrain/trail running defaults to running, but if an orienteering session
+    # is planned for this day, match it to that instead.
+    if type_key in _TERRAIN_RUNNING_KEYS and form == "running":
+        if any(
+            s.date == act_date
+            and s.status == SessionStatus.planned
+            and s.parts
+            and s.parts[0].get("form") == "orienteering"
+            for s in existing_sessions
+        ):
+            form = "orienteering"
     duration = int(round(float(activity.get("duration") or 0)))
     dist_raw = activity.get("distance")
     dist = round(float(dist_raw) / 1000, 2) if dist_raw and form not in _NO_DISTANCE_FORMS else None

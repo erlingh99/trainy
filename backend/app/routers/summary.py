@@ -11,7 +11,7 @@ from ..models.models import Session, User
 
 router = APIRouter(prefix="/api/summary", tags=["summary"])
 
-QUALITY_INTENSITIES = {"threshold", "vo2"}
+QUALITY_INTENSITIES = {"threshold", "vo2", "max"}
 
 
 async def _resolve_user(db: AsyncSession, user: str) -> User:
@@ -60,7 +60,8 @@ def _aggregate(sessions: Sequence[Session]) -> dict:
         1
         for s in counted
         if any(
-            (p.get("intensity") or "") in QUALITY_INTENSITIES for p in (s.parts or [])
+            (p.get("intensity") or "") in QUALITY_INTENSITIES or p.get("competition")
+            for p in (s.parts or [])
         )
     )
     by_form: Counter[str] = Counter(p["form"] for p in all_parts if p.get("form"))
