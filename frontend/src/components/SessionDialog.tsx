@@ -70,9 +70,7 @@ function partFromExisting(p: SessionPart): PartState {
   const form = p.form ?? "running";
   const rules = formRules(form);
   const character =
-    p.character && (rules.characters as readonly string[]).includes(p.character)
-      ? p.character
-      : "";
+    p.character && (rules.characters as readonly string[]).includes(p.character) ? p.character : "";
   const surface =
     p.surface && (rules.surfaces as readonly string[]).includes(p.surface)
       ? p.surface
