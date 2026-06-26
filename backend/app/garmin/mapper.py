@@ -156,29 +156,55 @@ def activity_to_part(activity: dict) -> dict:
     return part
 
 
-def map_activity(activity: dict, existing_sessions: list[Session]) -> ActivityProposal:
+def _activity_start_key(activity: dict) -> str:
+    return activity.get("startTimeLocal") or activity.get("startTimeGMT") or ""
+
+
+def map_activities(
+    activities: list[dict], existing_sessions: list[Session]
+) -> list[ActivityProposal]:
     """
-    Propose an action for one Garmin activity given the current existing sessions.
+    Propose actions for a batch of Garmin activities, coordinating across the
+    whole batch so each planned/done session is claimed by at most one activity.
+
+    Activities are processed earliest-first (by start time). On a day with
+    several planned sessions of the same form, the earliest activity claims the
+    lowest ``session_no``, the next the next, and so on — matching the convention
+    that a higher session number is the later session of the day.
+    """
+    ordered = sorted(activities, key=_activity_start_key)
+    claimed: set[str] = set()
+    return [_map_one(a, existing_sessions, claimed) for a in ordered]
+
+
+def _map_one(
+    activity: dict, existing_sessions: list[Session], claimed: set[str]
+) -> ActivityProposal:
+    """
+    Propose an action for one Garmin activity, ignoring sessions already claimed
+    by earlier activities in the same batch and recording any new claim.
 
     Match logic:
-    - If a done session on the same date with matching form exists → already_done (proposed: skip)
-    - Find planned sessions on the same date with a matching form in parts[0].
-    - 0 candidates → unmatched (proposed: create)
-    - 1 candidate  → matched (proposed: match)
-    - 2+ candidates → ambiguous (proposed: skip, user picks)
+    - If an unclaimed done session on the same date with matching form exists →
+      already_done (proposed: skip).
+    - Otherwise look at unclaimed planned sessions on the same date with a
+      matching form, ordered by session_no.
+      - 0 candidates → unmatched (proposed: create)
+      - 1+ candidates → matched to the lowest session_no (proposed: match)
     - unknown form  → ambiguous
     """
     act_date = activity_date(activity)
     form = _detect_form(activity)
     type_key = (activity.get("activityType") or {}).get("typeKey", "").lower()
-    # Terrain/trail running defaults to running, but if an orienteering session
-    # is planned for this day, match it to that instead.
+    # Terrain/trail running defaults to running, but if an unclaimed orienteering
+    # session is planned for this day, match it to that instead.
     if type_key in _TERRAIN_RUNNING_KEYS and form == "running":
         if any(
             s.date == act_date
             and s.status == SessionStatus.planned
             and s.parts
             and s.parts[0].get("form") == "orienteering"
+            and s.id not in claimed
             for s in existing_sessions
         ):
             form = "orienteering"
@@ -193,9 +219,11 @@ def map_activity(activity: dict, existing_sessions: list[Session]) -> ActivityPr
         if s.date == act_date
         and s.status == SessionStatus.done
         and (not s.parts or s.parts[0].get("form") == form)
+        and s.id not in claimed
     ]
     if done_matches:
         done_session = done_matches[0]
+        claimed.add(done_session.id)
         return ActivityProposal(
             garmin_activity_id=activity_id,
             date=act_date,
@@ -209,12 +237,16 @@ def map_activity(activity: dict, existing_sessions: list[Session]) -> ActivityPr
             proposed_action="skip",
         )
 
-    candidates = [
-        s for s in existing_sessions
-        if s.date == act_date
-        and s.status == SessionStatus.planned
-        and (not s.parts or s.parts[0].get("form") == form)
-    ]
+    candidates = sorted(
+        (
+            s for s in existing_sessions
+            if s.date == act_date
+            and s.status == SessionStatus.planned
+            and (not s.parts or s.parts[0].get("form") == form)
+            and s.id not in claimed
+        ),
+        key=lambda s: s.session_no,
+    )
     candidate_details = [
         CandidateSession(id=s.id, name=s.name, parts=s.parts) for s in candidates
     ]
@@ -223,14 +255,12 @@ def map_activity(activity: dict, existing_sessions: list[Session]) -> ActivityPr
         status: Literal["matched", "ambiguous", "unmatched", "already_done"] = "ambiguous"
         matched_id = None
         action: Literal["match", "create", "skip"] = "skip"
-    elif len(candidates) == 1:
+    elif candidates:
+        chosen = candidates[0]
+        claimed.add(chosen.id)
         status = "matched"
-        matched_id = candidates[0].id
+        matched_id = chosen.id
         action = "match"
-    elif len(candidates) > 1:
-        status = "ambiguous"
-        matched_id = None
-        action = "skip"
     else:
         status = "unmatched"
         matched_id = None
