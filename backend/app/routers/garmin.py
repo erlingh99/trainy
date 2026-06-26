@@ -28,7 +28,7 @@ from ..garmin.client import (
     TokenCache,
 )
 from ..garmin.crypto import decrypt_password, encrypt_password
-from ..garmin.mapper import ActivityProposal, map_activity
+from ..garmin.mapper import ActivityProposal, map_activities
 from ..models.models import GarminCredentials, Session, SessionStatus, User
 
 router = APIRouter(prefix="/api/garmin", tags=["garmin"])
@@ -300,8 +300,8 @@ async def sync_preview(
     )
     existing = list(result.all())
 
-    activities.sort(key=lambda a: a.get("startTimeLocal") or a.get("startTimeGMT") or "")
-    proposals = [map_activity(a, existing) for a in activities if (a.get("duration") or 0) >= 60]
+    activities = [a for a in activities if (a.get("duration") or 0) >= 60]
+    proposals = map_activities(activities, existing)  # sorts earliest-first internally
     return [_proposal_to_out(p) for p in proposals]
 
 
@@ -321,6 +321,7 @@ async def sync_apply(
     created = 0
     skipped = 0
     errors: list[str] = []
+    matched_session_ids: set[str] = set()
 
     for item in payload.items:
         if item.action == "skip":
@@ -331,6 +332,11 @@ async def sync_apply(
             if item.action == "match":
                 if not item.session_id:
                     errors.append(f"activity {item.garmin_activity_id}: action=match but no session_id")
+                    continue
+                if item.session_id in matched_session_ids:
+                    errors.append(
+                        f"activity {item.garmin_activity_id}: session {item.session_id} already matched by another activity"
+                    )
                     continue
                 s = await db.get(Session, item.session_id)
                 if not s or s.user_id != u.id:
@@ -357,6 +363,7 @@ async def sync_apply(
                     s.name = item.activity_name
                 s.updated_at = datetime.now(timezone.utc)
                 db.add(s)
+                matched_session_ids.add(item.session_id)
                 matched += 1
 
             elif item.action == "create":
