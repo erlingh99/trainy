@@ -29,6 +29,7 @@ import {
   sessionDuration,
   sessionDistance,
   computeTotals,
+  FORM_COLORS,
   type Session,
   type WeekSummary,
   type Totals,
@@ -110,7 +111,9 @@ function SortableSessionRow({
           <div className="mt-1 flex flex-wrap gap-1">
             {s.parts.map((p, i) => (
               <Fragment key={i}>
-                {p.form && <Chip>{t(`form.${p.form}`)}</Chip>}
+                {p.form && (
+                  <Chip color={FORM_COLORS[p.form] ?? "#64748b"}>{t(`form.${p.form}`)}</Chip>
+                )}
                 {p.character && <Chip>{t(`character.${p.character}`)}</Chip>}
               </Fragment>
             ))}
@@ -277,7 +280,9 @@ function MobileSessionCard({
           <div className="mt-1 flex flex-wrap gap-1">
             {s.parts.map((p, i) => (
               <Fragment key={i}>
-                {p.form && <Chip>{t(`form.${p.form}`)}</Chip>}
+                {p.form && (
+                  <Chip color={FORM_COLORS[p.form] ?? "#64748b"}>{t(`form.${p.form}`)}</Chip>
+                )}
                 {p.character && <Chip>{t(`character.${p.character}`)}</Chip>}
               </Fragment>
             ))}
@@ -838,7 +843,11 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                               <div className="mt-1 flex flex-wrap gap-1">
                                 {s.parts.map((p, i) => (
                                   <Fragment key={i}>
-                                    {p.form && <Chip>{t(`form.${p.form}`)}</Chip>}
+                                    {p.form && (
+                                      <Chip color={FORM_COLORS[p.form] ?? "#64748b"}>
+                                        {t(`form.${p.form}`)}
+                                      </Chip>
+                                    )}
                                     {p.character && <Chip>{t(`character.${p.character}`)}</Chip>}
                                   </Fragment>
                                 ))}

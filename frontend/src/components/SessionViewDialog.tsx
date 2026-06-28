@@ -215,7 +215,17 @@ function InfoPair({
   );
 }
 
-export function Chip({ children }: { children: React.ReactNode }) {
+export function Chip({ children, color }: { children: React.ReactNode; color?: string }) {
+  if (color) {
+    return (
+      <span
+        className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{ backgroundColor: `${color}26`, color }}
+      >
+        {children}
+      </span>
+    );
+  }
   return (
     <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
       {children}
