@@ -228,6 +228,7 @@ export type ActivityProposal = {
   garmin_activity_id: number;
   date: string; // YYYY-MM-DD
   form: string | null;
+  surface: string | null;
   duration_seconds: number;
   distance_km: number | null;
   activity_name: string | null;

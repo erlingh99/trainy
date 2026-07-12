@@ -159,6 +159,7 @@ export function GarminSyncModal({
       garmin_activity_id: it.proposal.garmin_activity_id,
       date: it.proposal.date,
       form: it.proposal.form,
+      surface: it.proposal.surface,
       duration_seconds: it.proposal.duration_seconds,
       distance_km: it.proposal.distance_km,
       activity_name: it.proposal.activity_name,
