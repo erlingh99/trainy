@@ -58,6 +58,7 @@ _FORM_MAP: dict[str, str] = {
 
 # Surface hints from typeKey for running activities
 _SURFACE_MAP: dict[str, str] = {
+    "running": "gravel",
     "trail_running": "trail",
     "treadmill_running": "treadmill",
     "track_running": "track",
@@ -86,6 +87,7 @@ class ActivityProposal:
     garmin_activity_id: int
     date: date
     form: Optional[str]
+    surface: Optional[str]
     duration_seconds: int
     distance_km: Optional[float]
     activity_name: Optional[str]
@@ -213,6 +215,7 @@ def _map_one(
     dist = round(float(dist_raw) / 1000, 2) if dist_raw and form not in _NO_DISTANCE_FORMS else None
     name = make_session_name(activity)
     activity_id = int(activity.get("activityId") or 0)
+    surface = _infer_surface(type_key) if form == "running" else None
 
     done_matches = [
         s for s in existing_sessions
@@ -228,6 +231,7 @@ def _map_one(
             garmin_activity_id=activity_id,
             date=act_date,
             form=form,
+            surface=surface,
             duration_seconds=duration,
             distance_km=dist,
             activity_name=name,
@@ -270,6 +274,7 @@ def _map_one(
         garmin_activity_id=activity_id,
         date=act_date,
         form=form,
+        surface=surface,
         duration_seconds=duration,
         distance_km=dist,
         activity_name=name,

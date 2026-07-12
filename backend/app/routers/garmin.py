@@ -69,6 +69,7 @@ class ActivityProposalOut(BaseModel):
     garmin_activity_id: int
     date: str
     form: Optional[str] = None
+    surface: Optional[str] = None
     duration_seconds: int
     distance_km: Optional[float] = None
     activity_name: Optional[str] = None
@@ -82,6 +83,7 @@ class ApplyItem(BaseModel):
     garmin_activity_id: int
     date: date
     form: Optional[str] = None
+    surface: Optional[str] = None
     duration_seconds: int
     distance_km: Optional[float] = None
     activity_name: Optional[str] = None
@@ -141,6 +143,7 @@ def _proposal_to_out(p: ActivityProposal) -> ActivityProposalOut:
         garmin_activity_id=p.garmin_activity_id,
         date=p.date.isoformat(),
         form=p.form,
+        surface=p.surface,
         duration_seconds=p.duration_seconds,
         distance_km=p.distance_km,
         activity_name=p.activity_name,
@@ -354,6 +357,8 @@ async def sync_apply(
                     part: dict[str, Any] = {"duration_seconds": item.duration_seconds}
                     if item.form:
                         part["form"] = item.form
+                    if item.surface:
+                        part["surface"] = item.surface
                     if item.distance_km is not None:
                         part["distance_km"] = item.distance_km
                     parts = [part]
@@ -381,6 +386,8 @@ async def sync_apply(
                 part: dict = {"duration_seconds": item.duration_seconds if item.duration_seconds else None}
                 if item.form:
                     part["form"] = item.form
+                if item.surface:
+                    part["surface"] = item.surface
                 if item.distance_km is not None:
                     part["distance_km"] = item.distance_km
 

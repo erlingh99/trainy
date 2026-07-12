@@ -124,6 +124,7 @@ export function garminSyncApply(
     garmin_activity_id: number;
     date: string;
     form: string | null;
+    surface: string | null;
     duration_seconds: number;
     distance_km: number | null;
     activity_name: string | null;

@@ -21,6 +21,7 @@ import { secondsToHmm, km } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CheckCircle, CircleDot, HelpCircle, Loader2, CheckCircle2 } from "lucide-react";
+import confetti from "canvas-confetti";
 
 type Props = {
   username: string;
@@ -159,6 +160,7 @@ export function GarminSyncModal({
       garmin_activity_id: it.proposal.garmin_activity_id,
       date: it.proposal.date,
       form: it.proposal.form,
+      surface: it.proposal.surface,
       duration_seconds: it.proposal.duration_seconds,
       distance_km: it.proposal.distance_km,
       activity_name: it.proposal.activity_name,
@@ -170,6 +172,9 @@ export function GarminSyncModal({
       const res = await garminSyncApply(username, payload);
       setResult(res);
       setPhase("done");
+      if (res.matched + res.created > 0) {
+        confetti({ particleCount: 120, spread: 70, origin: { y: 1 }, angle: 90 });
+      }
       onComplete(res);
     } catch (e) {
       setErrorMsg(e instanceof ApiError ? e.message : String(e));
