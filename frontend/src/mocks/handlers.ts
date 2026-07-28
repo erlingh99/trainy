@@ -83,6 +83,9 @@ function loadStore(): Store {
                 },
               ];
       }
+      if (!Array.isArray(s.lactate_measurements)) {
+        s.lactate_measurements = [];
+      }
     }
     _store = stored;
     return _store;
@@ -268,6 +271,9 @@ export const handlers = [
       session_no: payload.session_no ?? 1,
       name,
       parts: Array.isArray(payload.parts) ? payload.parts : [],
+      lactate_measurements: Array.isArray(payload.lactate_measurements)
+        ? payload.lactate_measurements
+        : [],
       status: payload.status ?? "planned",
       comment: payload.comment ?? null,
     };

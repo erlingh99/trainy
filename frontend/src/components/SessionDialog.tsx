@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, UserPlus, X } from "lucide-react";
+import { Pin, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { hmmToSeconds, secondsToHmm } from "@/lib/format";
 import { usersQuery } from "@/lib/queries";
@@ -37,6 +37,7 @@ import {
   INTENSITIES,
   STATUSES,
   formRules,
+  type LactateMeasurement,
   type Session,
   type SessionPart,
   type SessionStatus,
@@ -87,6 +88,12 @@ function partFromExisting(p: SessionPart): PartState {
   };
 }
 
+type LactateState = { value: string; comment: string };
+
+function lactateFromExisting(m: LactateMeasurement): LactateState {
+  return { value: String(m.value_mmol), comment: m.comment ?? "" };
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -125,6 +132,7 @@ export function SessionDialog({
       existing && existing.parts.length > 0
         ? existing.parts.map(partFromExisting)
         : [defaultPart()],
+    lactate: (existing?.lactate_measurements ?? []).map(lactateFromExisting),
     status: existing?.status ?? "planned",
   });
 
@@ -160,6 +168,12 @@ export function SessionDialog({
       rpe: p.rpe ? Number(p.rpe) : null,
       competition: p.competition || null,
     })),
+    lactate_measurements: form.lactate
+      .filter((m) => Number(m.value) > 0)
+      .map((m) => ({
+        value_mmol: Number(m.value),
+        comment: m.comment.trim() || null,
+      })),
     status: form.status,
     comment: commentRef.current?.value || null,
   });
@@ -200,6 +214,18 @@ export function SessionDialog({
 
   const removePart = (i: number) =>
     setForm((f) => ({ ...f, parts: f.parts.filter((_, j) => j !== i) }));
+
+  const updateLactate = (i: number, patch: Partial<LactateState>) =>
+    setForm((f) => ({
+      ...f,
+      lactate: f.lactate.map((m, j) => (j === i ? { ...m, ...patch } : m)),
+    }));
+
+  const addLactate = () =>
+    setForm((f) => ({ ...f, lactate: [...f.lactate, { value: "", comment: "" }] }));
+
+  const removeLactate = (i: number) =>
+    setForm((f) => ({ ...f, lactate: f.lactate.filter((_, j) => j !== i) }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -338,6 +364,43 @@ export function SessionDialog({
             <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={addPart}>
               <Plus className="h-3.5 w-3.5" />
               {t("session.addPart")}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <Pin className="h-3.5 w-3.5" />
+              {t("session.lactate")}
+            </span>
+            {form.lactate.map((m, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className="w-24 shrink-0"
+                  placeholder={t("session.lactateValue")}
+                  value={m.value}
+                  onChange={(e) => updateLactate(i, { value: e.target.value })}
+                />
+                <Input
+                  placeholder={t("session.lactateComment")}
+                  value={m.comment}
+                  onChange={(e) => updateLactate(i, { comment: e.target.value })}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeLactate(i)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={addLactate}>
+              <Plus className="h-3.5 w-3.5" />
+              {t("session.addMeasurement")}
             </Button>
           </div>
 

@@ -177,6 +177,19 @@ class SessionPart(SQLModel):
         return self
 
 
+class LactateMeasurement(SQLModel):
+    """A single blood lactate reading taken during a session."""
+
+    value_mmol: float
+    comment: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_value(self) -> "LactateMeasurement":
+        if self.value_mmol <= 0:
+            raise ValueError("value_mmol must be greater than 0")
+        return self
+
+
 class User(SQLModel, table=True):
     __tablename__ = "users"
     id: str = Field(default_factory=_uuid, primary_key=True)
@@ -194,6 +207,10 @@ class Session(SQLModel, table=True):
 
     name: Optional[str] = None
     parts: list[dict] = Field(
+        default_factory=list,
+        sa_column=sa.Column(sa.JSON, nullable=False, server_default="[]"),
+    )
+    lactate_measurements: list[dict] = Field(
         default_factory=list,
         sa_column=sa.Column(sa.JSON, nullable=False, server_default="[]"),
     )
@@ -217,6 +234,7 @@ class SessionCreate(SQLModel):
     session_no: int = 1
     name: Optional[str] = None
     parts: list[SessionPart] = []
+    lactate_measurements: list[LactateMeasurement] = []
     status: SessionStatus = SessionStatus.planned
     comment: Optional[str] = None
     buddy_usernames: list[str] = []
@@ -227,6 +245,7 @@ class SessionUpdate(SQLModel):
     session_no: Optional[int] = None
     name: Optional[str] = None
     parts: Optional[list[SessionPart]] = None
+    lactate_measurements: Optional[list[LactateMeasurement]] = None
     status: Optional[SessionStatus] = None
     comment: Optional[str] = None
 

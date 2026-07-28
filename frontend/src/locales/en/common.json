@@ -62,7 +62,11 @@
     "addBuddy": "Add",
     "buddyPlaceholder": "Username…",
     "buddyNotFound": "User not found",
-    "buddySelf": "Can't add yourself"
+    "buddySelf": "Can't add yourself",
+    "lactate": "Lactate measurements",
+    "lactateValue": "mmol/L",
+    "lactateComment": "Comment (e.g. after 8th interval)",
+    "addMeasurement": "Add measurement"
   },
   "form": {
     "running": "Running",

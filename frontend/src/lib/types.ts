@@ -13,6 +13,11 @@ export type SessionPart = {
   competition?: boolean | null;
 };
 
+export type LactateMeasurement = {
+  value_mmol: number;
+  comment?: string | null;
+};
+
 export type Session = {
   id: string;
   user_id: string;
@@ -20,6 +25,7 @@ export type Session = {
   session_no: number;
   name: string | null;
   parts: SessionPart[];
+  lactate_measurements: LactateMeasurement[];
   status: SessionStatus;
   comment: string | null;
 };
@@ -61,6 +67,10 @@ export function sessionDuration(s: Session): number | null {
 export function sessionDistance(s: Session): number | null {
   const d = s.parts.reduce((a, p) => a + (p.distance_km ?? 0), 0);
   return d > 0 ? d : null;
+}
+export function sessionMaxLactate(s: Session): number | null {
+  if (!s.lactate_measurements?.length) return null;
+  return Math.max(...s.lactate_measurements.map((m) => m.value_mmol));
 }
 
 export type Totals = {

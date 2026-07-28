@@ -83,6 +83,8 @@ async def update_session(session_id: str, payload: SessionUpdate, db: AsyncSessi
         setattr(s, k, v)
     if "parts" in data:
         flag_modified(s, "parts")
+    if "lactate_measurements" in data:
+        flag_modified(s, "lactate_measurements")
     s.updated_at = datetime.now(timezone.utc)
     db.add(s)
     return s

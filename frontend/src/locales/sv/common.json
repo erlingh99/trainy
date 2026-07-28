@@ -62,7 +62,11 @@
     "addBuddy": "Lägg till",
     "buddyPlaceholder": "Användarnamn…",
     "buddyNotFound": "Användaren hittades inte",
-    "buddySelf": "Kan inte lägga till dig själv"
+    "buddySelf": "Kan inte lägga till dig själv",
+    "lactate": "Laktatmätningar",
+    "lactateValue": "mmol/L",
+    "lactateComment": "Kommentar (t.ex. efter 8:e intervallen)",
+    "addMeasurement": "Lägg till mätning"
   },
   "form": {
     "running": "Löpning",

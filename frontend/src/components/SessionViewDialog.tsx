@@ -10,7 +10,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Check, Pencil } from "lucide-react";
+import { Check, Pencil, Pin } from "lucide-react";
 import { km, secondsToHmm } from "@/lib/format";
 import { sessionDuration, sessionDistance, type Session } from "@/lib/types";
 import { SessionDialog } from "./SessionDialog";
@@ -112,6 +112,26 @@ export function SessionViewDialog({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {s.lactate_measurements.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Pin className="h-3.5 w-3.5" />
+            {t("session.lactate")}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {s.lactate_measurements.map((m, i) => (
+              <span
+                key={i}
+                className="rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300"
+                title={m.comment ?? undefined}
+              >
+                {m.value_mmol} mmol/L{m.comment ? ` · ${m.comment}` : ""}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
