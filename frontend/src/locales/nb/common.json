@@ -62,7 +62,11 @@
     "addBuddy": "Legg til",
     "buddyPlaceholder": "Brukernavn…",
     "buddyNotFound": "Brukeren ble ikke funnet",
-    "buddySelf": "Kan ikke legge til deg selv"
+    "buddySelf": "Kan ikke legge til deg selv",
+    "lactate": "Laktatmålinger",
+    "lactateValue": "mmol/L",
+    "lactateComment": "Kommentar (f.eks. etter 8. intervall)",
+    "addMeasurement": "Legg til måling"
   },
   "form": {
     "running": "Løping",

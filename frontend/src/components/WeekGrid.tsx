@@ -28,6 +28,7 @@ import { km, secondsToHmm } from "@/lib/format";
 import {
   sessionDuration,
   sessionDistance,
+  sessionMaxLactate,
   computeTotals,
   FORM_COLORS,
   type Session,
@@ -45,6 +46,7 @@ import {
   Clock,
   GripVertical,
   MessageCircle,
+  Pin,
   Plus,
   Route,
   Trophy,
@@ -60,6 +62,15 @@ import { api } from "@/lib/api";
 
 // Strip the layout prefix ("d:" or "m:") from dnd-kit drag IDs to get the real session ID
 const toSessionId = (dragId: string | number) => String(dragId).replace(/^[dm]:/, "");
+
+function LactateIndicator({ value }: { value: number }) {
+  return (
+    <span className="flex items-center gap-0.5 text-rose-600 dark:text-rose-400">
+      <Pin className="h-3 w-3 shrink-0" />
+      {value} mmol/L
+    </span>
+  );
+}
 
 // ── Sortable row (reorder mode only) ──────────────────────────────────────
 
@@ -107,8 +118,8 @@ function SortableSessionRow({
             <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           )}
         </div>
-        {s.parts.some((p) => p.form || p.character) && (
-          <div className="mt-1 flex flex-wrap gap-1">
+        {(s.parts.some((p) => p.form || p.character) || sessionMaxLactate(s) != null) && (
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             {s.parts.map((p, i) => (
               <Fragment key={i}>
                 {p.form && (
@@ -117,6 +128,11 @@ function SortableSessionRow({
                 {p.character && <Chip>{t(`character.${p.character}`)}</Chip>}
               </Fragment>
             ))}
+            {sessionMaxLactate(s) != null && (
+              <span className="text-xs">
+                <LactateIndicator value={sessionMaxLactate(s)!} />
+              </span>
+            )}
           </div>
         )}
       </td>
@@ -275,6 +291,7 @@ function MobileSessionCard({
               {km(sessionDistance(s))}
             </span>
           )}
+          {sessionMaxLactate(s) != null && <LactateIndicator value={sessionMaxLactate(s)!} />}
         </div>
         {s.parts.some((p) => p.form || p.character) && (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -839,8 +856,9 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                                 <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                               )}
                             </div>
-                            {s.parts.some((p) => p.form || p.character) && (
-                              <div className="mt-1 flex flex-wrap gap-1">
+                            {(s.parts.some((p) => p.form || p.character) ||
+                              sessionMaxLactate(s) != null) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
                                 {s.parts.map((p, i) => (
                                   <Fragment key={i}>
                                     {p.form && (
@@ -851,6 +869,11 @@ export function WeekGrid({ username, week, noContainer }: Props) {
                                     {p.character && <Chip>{t(`character.${p.character}`)}</Chip>}
                                   </Fragment>
                                 ))}
+                                {sessionMaxLactate(s) != null && (
+                                  <span className="text-xs">
+                                    <LactateIndicator value={sessionMaxLactate(s)!} />
+                                  </span>
+                                )}
                               </div>
                             )}
                           </td>
