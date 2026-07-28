@@ -30,6 +30,14 @@ export type Session = {
   comment: string | null;
 };
 
+export type SessionSearchResult = {
+  items: Session[];
+  has_more: boolean;
+  next_cursor?: string | null;
+  /** Present on the first page only. */
+  total?: number | null;
+};
+
 const QUALITY_INTENSITIES = new Set(["threshold", "vo2", "max"]);
 
 export function computeTotals(sessions: Session[]): Totals {

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { usersQuery } from "@/lib/queries";
 import type { User } from "@/lib/types";
-import { ArrowLeftRight, Menu } from "lucide-react";
+import { ArrowLeftRight, Menu, Search as SearchIcon } from "lucide-react";
 import { currentIsoWeek } from "@/lib/week";
 
 export function AppHeader({ usernameOverride }: { usernameOverride?: string } = {}) {
@@ -34,6 +34,7 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMonth = pathname.includes("/month/");
   const isDashboard = pathname.endsWith("/dashboard");
+  const isSearch = pathname.endsWith("/search");
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -43,6 +44,8 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
     startTransition(() => {
       if (isDashboard) {
         navigate({ to: "/u/$username/dashboard", params: { username: name } });
+      } else if (isSearch) {
+        navigate({ to: "/u/$username/search", params: { username: name }, search: (prev) => prev });
       } else if (isMonth) {
         const yyyymm = pathname.split("/month/")[1];
         navigate({ to: "/u/$username/month/$yyyymm", params: { username: name, yyyymm } });
@@ -130,6 +133,18 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
               >
                 <ArrowLeftRight className="h-3 w-3" />
                 {t("nav.compare")}
+              </Link>
+              <Link
+                to="/u/$username/search"
+                params={{ username }}
+                className="flex items-center gap-1 rounded px-2 py-1 text-foreground/70 hover:bg-accent hover:text-foreground"
+                activeProps={{
+                  className:
+                    "flex items-center gap-1 rounded px-2 py-1 bg-primary/10 text-primary font-medium",
+                }}
+              >
+                <SearchIcon className="h-3 w-3" />
+                {t("nav.search")}
               </Link>
             </div>
           )}
@@ -231,6 +246,17 @@ export function AppHeader({ usernameOverride }: { usernameOverride?: string } = 
                     >
                       <ArrowLeftRight className="h-3.5 w-3.5" />
                       {t("nav.compare")}
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link
+                      to="/u/$username/search"
+                      params={{ username }}
+                      className={navLinkClass}
+                      activeProps={{ className: navLinkActiveClass }}
+                    >
+                      <SearchIcon className="h-3.5 w-3.5" />
+                      {t("nav.search")}
                     </Link>
                   </SheetClose>
                 </nav>

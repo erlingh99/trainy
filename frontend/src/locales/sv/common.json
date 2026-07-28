@@ -11,7 +11,8 @@
     "prev": "Föregående",
     "next": "Nästa",
     "compare": "Jämför",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "search": "Sök"
   },
   "users": {
     "select": "Välj användare",
@@ -224,6 +225,24 @@
     "checkDuplicates": "Kontrollera dubbletter",
     "duplicatesTitle": "Duplicerade pass",
     "noDuplicates": "Inga duplicerade pass hittades."
+  },
+  "search": {
+    "title": "Sök pass",
+    "placeholder": "Sök namn eller kommentar…",
+    "status": "Status",
+    "form": "Träningsform",
+    "character": "Passkaraktär",
+    "all": "Alla",
+    "from": "Från",
+    "to": "Till",
+    "competitionOnly": "Endast tävlingar",
+    "lactateOnly": "Laktat uppmätt",
+    "clear": "Rensa filter",
+    "noResults": "Inga pass matchar dina filter.",
+    "resultCount_one": "{{count}} pass",
+    "resultCount_other": "{{count}} pass",
+    "showingSoFar": "— visar {{n}} hittills.",
+    "loadMore": "Ladda fler"
   },
   "palette": {
     "title": "Färgtema",

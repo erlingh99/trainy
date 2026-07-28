@@ -242,6 +242,62 @@ export const handlers = [
   }),
 
   // ---------- sessions ----------
+  http.get("/api/sessions/search", ({ request }) => {
+    const url = new URL(request.url);
+    const userName = url.searchParams.get("user") || "";
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    const q = url.searchParams.get("q")?.toLowerCase() || null;
+    const status = url.searchParams.get("status");
+    const form = url.searchParams.get("form");
+    const character = url.searchParams.get("character");
+    const competition = url.searchParams.get("competition");
+    const hasLactate = url.searchParams.get("has_lactate");
+    const limit = Number(url.searchParams.get("limit") ?? 50);
+    const cursor = url.searchParams.get("cursor");
+    const store = loadStore();
+    const u = resolveUserByName(store, userName);
+    if (!u) return HttpResponse.json({ detail: `Unknown user: ${userName}` }, { status: 404 });
+    const matches = store.sessions
+      .filter((s) => s.user_id === u.id)
+      .filter((s) => (from ? s.date >= from : true))
+      .filter((s) => (to ? s.date <= to : true))
+      .filter((s) => (status ? s.status === status : true))
+      .filter((s) =>
+        q
+          ? (s.name?.toLowerCase().includes(q) ?? false) ||
+            (s.comment?.toLowerCase().includes(q) ?? false)
+          : true,
+      )
+      .filter((s) => (form ? s.parts.some((p) => p.form === form) : true))
+      .filter((s) => (character ? s.parts.some((p) => p.character === character) : true))
+      .filter((s) =>
+        competition != null
+          ? s.parts.some((p) => p.competition) === (competition === "true")
+          : true,
+      )
+      .filter((s) =>
+        hasLactate != null ? s.lactate_measurements.length > 0 === (hasLactate === "true") : true,
+      )
+      .sort((a, b) => b.date.localeCompare(a.date) || b.session_no - a.session_no);
+    let page = matches;
+    if (cursor) {
+      const at = cursor.lastIndexOf(":");
+      const cDate = cursor.slice(0, at);
+      const cNo = Number(cursor.slice(at + 1));
+      page = matches.filter((s) => s.date < cDate || (s.date === cDate && s.session_no < cNo));
+    }
+    const items = page.slice(0, limit);
+    const hasMore = page.length > items.length;
+    const last = items[items.length - 1];
+    return HttpResponse.json({
+      items,
+      has_more: hasMore,
+      next_cursor: hasMore && last ? `${last.date}:${last.session_no}` : null,
+      total: cursor ? null : matches.length,
+    });
+  }),
+
   http.get("/api/sessions", ({ request }) => {
     const url = new URL(request.url);
     const userName = url.searchParams.get("user") || "";
