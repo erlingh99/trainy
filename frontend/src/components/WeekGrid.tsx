@@ -624,7 +624,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
   return (
     <div className={noContainer ? "p-3" : "container mx-auto p-3"}>
       {!noContainer && (
-        <div className="flex items-center gap-1 pb-3">
+        <div className="flex flex-wrap items-center gap-y-2 gap-x-1 pb-3">
           <Button
             size="icon"
             variant="ghost"
@@ -633,7 +633,7 @@ export function WeekGrid({ username, week, noContainer }: Props) {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="min-w-[130px] text-center text-sm font-semibold text-primary">
+          <div className="min-w-[130px] whitespace-nowrap text-center text-sm font-semibold text-primary">
             {weekRangeLabel(week, i18n.language)}
           </div>
           <Button
