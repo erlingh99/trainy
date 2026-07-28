@@ -1104,7 +1104,6 @@ export function WeekGrid({ username, week, noContainer }: Props) {
           date={editing.date}
           sessionNo={editing.sessionNo}
           existing={null}
-          weekKey={week}
         />
       )}
 
@@ -1114,7 +1113,6 @@ export function WeekGrid({ username, week, noContainer }: Props) {
           onOpenChange={(o) => !o && setViewing(null)}
           session={viewing}
           userId={user.id}
-          weekKey={week}
           today={today}
           onMarkDone={() => {
             markDone.mutate(viewing.id);
