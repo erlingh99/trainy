@@ -11,7 +11,8 @@
     "prev": "Forrige",
     "next": "Neste",
     "compare": "Sammenlign",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "search": "Søk"
   },
   "users": {
     "select": "Velg bruker",
@@ -224,6 +225,24 @@
     "checkDuplicates": "Sjekk duplikater",
     "duplicatesTitle": "Dupliserte økter",
     "noDuplicates": "Ingen dupliserte økter funnet."
+  },
+  "search": {
+    "title": "Søk økter",
+    "placeholder": "Søk navn eller kommentar…",
+    "status": "Status",
+    "form": "Treningsform",
+    "character": "Øktkarakter",
+    "all": "Alle",
+    "from": "Fra",
+    "to": "Til",
+    "competitionOnly": "Kun konkurranser",
+    "lactateOnly": "Laktat målt",
+    "clear": "Nullstill filter",
+    "noResults": "Ingen økter matcher filtrene dine.",
+    "resultCount_one": "{{count}} økt",
+    "resultCount_other": "{{count}} økter",
+    "showingSoFar": "— viser {{n}} så langt.",
+    "loadMore": "Last inn flere"
   },
   "palette": {
     "title": "Fargetema",

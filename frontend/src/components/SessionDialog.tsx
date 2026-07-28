@@ -103,7 +103,6 @@ type Props = {
   date: string;
   sessionNo: number;
   existing?: Session | null;
-  weekKey: string;
 };
 
 export function SessionDialog({
@@ -115,7 +114,6 @@ export function SessionDialog({
   date,
   sessionNo,
   existing,
-  weekKey,
 }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();

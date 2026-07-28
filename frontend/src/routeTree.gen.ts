@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
+import { Route as UUsernameSearchRouteImport } from './routes/u.$username.search'
 import { Route as UUsernameDashboardRouteImport } from './routes/u.$username.dashboard'
 import { Route as CompareWeekWeekRouteImport } from './routes/compare.week.$week'
 import { Route as UUsernameWeekWeekRouteImport } from './routes/u.$username.week.$week'
@@ -31,6 +32,11 @@ const UUsernameRoute = UUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
   getParentRoute: () => rootRouteImport,
+} as any)
+const UUsernameSearchRoute = UUsernameSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => UUsernameRoute,
 } as any)
 const UUsernameDashboardRoute = UUsernameDashboardRouteImport.update({
   id: '/dashboard',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/u/$username': typeof UUsernameRouteWithChildren
   '/compare/week/$week': typeof CompareWeekWeekRoute
   '/u/$username/dashboard': typeof UUsernameDashboardRoute
+  '/u/$username/search': typeof UUsernameSearchRoute
   '/u/$username/month/$yyyymm': typeof UUsernameMonthYyyymmRoute
   '/u/$username/week/$week': typeof UUsernameWeekWeekRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/u/$username': typeof UUsernameRouteWithChildren
   '/compare/week/$week': typeof CompareWeekWeekRoute
   '/u/$username/dashboard': typeof UUsernameDashboardRoute
+  '/u/$username/search': typeof UUsernameSearchRoute
   '/u/$username/month/$yyyymm': typeof UUsernameMonthYyyymmRoute
   '/u/$username/week/$week': typeof UUsernameWeekWeekRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/u/$username': typeof UUsernameRouteWithChildren
   '/compare/week/$week': typeof CompareWeekWeekRoute
   '/u/$username/dashboard': typeof UUsernameDashboardRoute
+  '/u/$username/search': typeof UUsernameSearchRoute
   '/u/$username/month/$yyyymm': typeof UUsernameMonthYyyymmRoute
   '/u/$username/week/$week': typeof UUsernameWeekWeekRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/compare/week/$week'
     | '/u/$username/dashboard'
+    | '/u/$username/search'
     | '/u/$username/month/$yyyymm'
     | '/u/$username/week/$week'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/compare/week/$week'
     | '/u/$username/dashboard'
+    | '/u/$username/search'
     | '/u/$username/month/$yyyymm'
     | '/u/$username/week/$week'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/u/$username'
     | '/compare/week/$week'
     | '/u/$username/dashboard'
+    | '/u/$username/search'
     | '/u/$username/month/$yyyymm'
     | '/u/$username/week/$week'
   fileRoutesById: FileRoutesById
@@ -141,6 +153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$username/search': {
+      id: '/u/$username/search'
+      path: '/search'
+      fullPath: '/u/$username/search'
+      preLoaderRoute: typeof UUsernameSearchRouteImport
+      parentRoute: typeof UUsernameRoute
+    }
     '/u/$username/dashboard': {
       id: '/u/$username/dashboard'
       path: '/dashboard'
@@ -174,12 +193,14 @@ declare module '@tanstack/react-router' {
 
 interface UUsernameRouteChildren {
   UUsernameDashboardRoute: typeof UUsernameDashboardRoute
+  UUsernameSearchRoute: typeof UUsernameSearchRoute
   UUsernameMonthYyyymmRoute: typeof UUsernameMonthYyyymmRoute
   UUsernameWeekWeekRoute: typeof UUsernameWeekWeekRoute
 }
 
 const UUsernameRouteChildren: UUsernameRouteChildren = {
   UUsernameDashboardRoute: UUsernameDashboardRoute,
+  UUsernameSearchRoute: UUsernameSearchRoute,
   UUsernameMonthYyyymmRoute: UUsernameMonthYyyymmRoute,
   UUsernameWeekWeekRoute: UUsernameWeekWeekRoute,
 }

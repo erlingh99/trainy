@@ -1,7 +1,9 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { api, apiPut } from "./api";
 import type {
   Session,
+  SessionSearchResult,
+  SessionStatus,
   User,
   WeekSummary,
   MonthSummary,
@@ -44,6 +46,38 @@ export const monthSessionsQuery = (user: string, start: string, end: string) =>
     queryFn: () =>
       api<Session[]>(`/api/sessions?user=${encodeURIComponent(user)}&from=${start}&to=${end}`),
     enabled: Boolean(user && start && end),
+  });
+
+export type SessionSearchFilters = {
+  q?: string;
+  status?: SessionStatus;
+  form?: string;
+  character?: string;
+  competition?: boolean;
+  hasLactate?: boolean;
+  from?: string;
+  to?: string;
+};
+
+export const sessionSearchQuery = (user: string, filters: SessionSearchFilters) =>
+  infiniteQueryOptions({
+    queryKey: ["sessions", "search", user, filters],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ user: user });
+      if (filters.q) params.set("q", filters.q);
+      if (filters.status) params.set("status", filters.status);
+      if (filters.form) params.set("form", filters.form);
+      if (filters.character) params.set("character", filters.character);
+      if (filters.competition != null) params.set("competition", String(filters.competition));
+      if (filters.hasLactate != null) params.set("has_lactate", String(filters.hasLactate));
+      if (filters.from) params.set("from", filters.from);
+      if (filters.to) params.set("to", filters.to);
+      if (pageParam) params.set("cursor", pageParam);
+      return api<SessionSearchResult>(`/api/sessions/search?${params}`);
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last: SessionSearchResult) => last.next_cursor ?? undefined,
+    enabled: Boolean(user),
   });
 
 export const seasonSummaryQuery = (user: string, from: string, to: string, onlyDone = false) =>

@@ -21,7 +21,6 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   session: Session;
   userId: string;
-  weekKey: string;
   today: string;
   onMarkDone: () => void;
   markDonePending: boolean;
@@ -32,7 +31,6 @@ export function SessionViewDialog({
   onOpenChange,
   session: s,
   userId,
-  weekKey,
   today,
   onMarkDone,
   markDonePending,
@@ -211,7 +209,6 @@ export function SessionViewDialog({
           date={s.date}
           sessionNo={s.session_no}
           existing={s}
-          weekKey={weekKey}
         />
       )}
     </>

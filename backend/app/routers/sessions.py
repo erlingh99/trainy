@@ -5,14 +5,47 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import ColumnElement, func, or_, tuple_
+from sqlalchemy import select as sa_select
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..database.db import get_session
-from ..models.models import Session, SessionCreate, SessionReorder, SessionStatus, SessionUpdate, User
+from ..models.models import (
+    Session,
+    SessionCharacter,
+    SessionCreate,
+    SessionForm,
+    SessionReorder,
+    SessionStatus,
+    SessionUpdate,
+    User,
+)
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
+
+_LIKE_ESCAPE = "\\"
+
+DEFAULT_SEARCH_LIMIT = 50
+MAX_SEARCH_LIMIT = 500
+
+
+def _contains_pattern(term: str) -> str:
+    """LIKE pattern matching `term` literally — user input may contain % or _."""
+    escaped = term.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2).replace("%", r"\%").replace("_", r"\_")
+    return f"%{escaped}%"
+
+
+def _part_has(field: str, value: object):
+    """Correlated EXISTS over the JSON `parts` array (SQLite json_each)."""
+    parts = func.json_each(col(Session.parts)).table_valued("value", joins_implicitly=True)
+    return (
+        sa_select(1)
+        .select_from(parts)
+        .where(func.json_extract(parts.c.value, f"$.{field}") == value)
+        .exists()
+    )
 
 
 async def _resolve_user(db: AsyncSession, user: str) -> User:
@@ -39,6 +72,90 @@ async def list_sessions(
     stmt = stmt.order_by(col(Session.date), col(Session.session_no))
     result = await db.exec(stmt)
     return result.all()
+
+
+class SessionSearchResult(BaseModel):
+    items: list[Session]
+    has_more: bool
+    next_cursor: Optional[str] = None
+    # Only computed for the first page; later pages reuse the client's copy.
+    total: Optional[int] = None
+
+
+def _parse_cursor(cursor: str) -> tuple[date, int]:
+    try:
+        raw_date, raw_no = cursor.rsplit(":", 1)
+        return date.fromisoformat(raw_date), int(raw_no)
+    except ValueError:
+        raise HTTPException(422, f"Invalid cursor: {cursor}")
+
+
+@router.get("/search")
+async def search_sessions(
+    user: str = Query(...),
+    from_: Optional[date] = Query(None, alias="from"),
+    to: Optional[date] = None,
+    q: Optional[str] = None,
+    status: Optional[SessionStatus] = None,
+    form: Optional[SessionForm] = None,
+    character: Optional[SessionCharacter] = None,
+    competition: Optional[bool] = None,
+    has_lactate: Optional[bool] = None,
+    cursor: Optional[str] = None,
+    limit: int = Query(DEFAULT_SEARCH_LIMIT, ge=1, le=MAX_SEARCH_LIMIT),
+    db: AsyncSession = Depends(get_session),
+) -> SessionSearchResult:
+    u = await _resolve_user(db, user)
+
+    conds: list[ColumnElement[bool]] = [col(Session.user_id) == u.id]
+    if from_:
+        conds.append(col(Session.date) >= from_)
+    if to:
+        conds.append(col(Session.date) <= to)
+    if status:
+        conds.append(col(Session.status) == status)
+    if q:
+        like = _contains_pattern(q)
+        conds.append(
+            or_(
+                col(Session.name).ilike(like, escape=_LIKE_ESCAPE),
+                col(Session.comment).ilike(like, escape=_LIKE_ESCAPE),
+            )
+        )
+    if form:
+        conds.append(_part_has("form", str(form)))
+    if character:
+        conds.append(_part_has("character", str(character)))
+    if competition is not None:
+        is_competition = _part_has("competition", True)
+        conds.append(is_competition if competition else ~is_competition)
+    if has_lactate is not None:
+        any_lactate = func.json_array_length(col(Session.lactate_measurements)) > 0
+        conds.append(any_lactate if has_lactate else ~any_lactate)
+
+    # Count once, on the first page only — it is the expensive half of the request.
+    total = (
+        None
+        if cursor
+        else (await db.scalar(sa_select(func.count()).select_from(Session).where(*conds)) or 0)
+    )
+
+    if cursor:
+        conds.append(tuple_(col(Session.date), col(Session.session_no)) < _parse_cursor(cursor))
+
+    # Newest first, so a page keeps the most recent matches rather than the oldest.
+    # Over-fetch by one to learn whether another page exists without a second query.
+    stmt = (
+        select(Session)
+        .where(*conds)
+        .order_by(col(Session.date).desc(), col(Session.session_no).desc())
+        .limit(limit + 1)
+    )
+    rows = list((await db.exec(stmt)).all())
+    has_more = len(rows) > limit
+    items = rows[:limit]
+    next_cursor = f"{items[-1].date.isoformat()}:{items[-1].session_no}" if has_more else None
+    return SessionSearchResult(items=items, has_more=has_more, next_cursor=next_cursor, total=total)
 
 
 @router.post("", status_code=201)

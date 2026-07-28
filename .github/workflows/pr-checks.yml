@@ -23,6 +23,9 @@ jobs:
       - name: Lint
         run: uv run ruff check
         working-directory: backend
+      - name: Test
+        run: uv run pytest -q
+        working-directory: backend
 
   frontend-checks:
     runs-on: ubuntu-latest

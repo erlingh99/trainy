@@ -24,9 +24,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Training Planner", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-app.mount(
-    "/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets"
-)
+# Only present once the frontend has been built (the Docker image does this).
+# Guarded so the API still runs standalone — `uvicorn app.main:app`, and tests.
+_assets = FRONTEND_DIST / "assets"
+if _assets.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
 
 app.include_router(users_router.router)
 app.include_router(sessions_router.router)
@@ -43,4 +45,7 @@ async def catch_all(full_path: str):
     candidate = FRONTEND_DIST / full_path
     if candidate.is_file():
         return FileResponse(candidate)
-    return FileResponse(FRONTEND_DIST / "index.html", media_type="text/html")
+    index = FRONTEND_DIST / "index.html"
+    if not index.is_file():
+        raise HTTPException(status_code=404, detail="Frontend not built")
+    return FileResponse(index, media_type="text/html")

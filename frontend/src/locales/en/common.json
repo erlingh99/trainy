@@ -11,7 +11,8 @@
     "prev": "Previous",
     "next": "Next",
     "compare": "Compare",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "search": "Search"
   },
   "users": {
     "select": "Select user",
@@ -224,6 +225,24 @@
     "checkDuplicates": "Check duplicates",
     "duplicatesTitle": "Duplicate sessions",
     "noDuplicates": "No duplicate sessions found."
+  },
+  "search": {
+    "title": "Search sessions",
+    "placeholder": "Search name or comment…",
+    "status": "Status",
+    "form": "Form",
+    "character": "Character",
+    "all": "All",
+    "from": "From",
+    "to": "To",
+    "competitionOnly": "Competitions only",
+    "lactateOnly": "Lactate measured",
+    "clear": "Clear filters",
+    "noResults": "No sessions match your filters.",
+    "resultCount_one": "{{count}} session",
+    "resultCount_other": "{{count}} sessions",
+    "showingSoFar": "— showing {{n}} so far.",
+    "loadMore": "Load more"
   },
   "palette": {
     "title": "Color theme",

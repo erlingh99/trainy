@@ -171,13 +171,14 @@ export function WeeklyVolumeChart({
 const CHARACTER_COLORS: Record<string, string> = {
   distance: "#10b981",
   interval: "#f97316",
-  threshold: "#ef4444",
-  vo2: "#8b5cf6",
+  tempo: "#ef4444",
   long: "#3b82f6",
-  recovery: "#94a3b8",
   middle: "#22c55e",
   technique: "#eab308",
   fartlek: "#06b6d4",
+  upperbody: "#a855f7",
+  lowerbody: "#ec4899",
+  fullbody: "#14b8a6",
   other: "#64748b",
 };
 
