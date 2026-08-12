@@ -69,3 +69,9 @@ Tests drive the API over HTTP with `TestClient` rather than calling router funct
 
 - `pr-checks.yml`: backend (`ty check`, `ruff check`, `pytest`) and frontend (`tsc --noEmit`, `eslint` — no tests) run independently.
 - `deploy.yml`: on push to `main`, builds+pushes the arm64 Docker image to GHCR, then SSHes over Tailscale to the `trainy` staging environment and runs `scripts/restart.sh`.
+
+## Backups
+
+The `trainy-backup` service in `docker-compose.yml` (`offen/docker-volume-backup:v2`) archives the `trainy_data` volume (`training.db`) nightly at 03:30 to `${BACKUP_ARCHIVE_ROOT}/trainy` on the host, keeping 30 days of `.tar.gz` files (older ones pruned automatically). `BACKUP_ARCHIVE_ROOT` must be set on the host (same mechanism as `${DNS_IP}`) to the mount point of the external backup HDD, e.g. `/mnt/backup-hdd`. During each backup the `trainy` container is briefly stopped and restarted (via the `docker-volume-backup.stop-during-backup` label) to guarantee a consistent copy of the SQLite file.
+
+To restore: `docker compose stop trainy`, extract the desired `trainy-<timestamp>.tar.gz` from the archive directory so `training.db` lands back at the `trainy_data` volume's `/app/data` path, then `docker compose start trainy`.
