@@ -1,18 +1,18 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+from .config import FRONTEND_DIST
+from .database.db import init_db
+from .routers import garmin as garmin_router
+from .routers import goals as goals_router
+from .routers import health as health_router
 from .routers import sessions as sessions_router
 from .routers import summary as summary_router
 from .routers import users as users_router
-from .routers import health as health_router
-from .routers import goals as goals_router
-from .routers import garmin as garmin_router
-from .config import FRONTEND_DIST
-from .database.db import init_db
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app.include_router(summary_router.router)
 app.include_router(goals_router.router)
 app.include_router(health_router.router)
 app.include_router(garmin_router.router)
+
 
 # Catch-all route for SPA - must be last
 @app.get("/{full_path:path}", include_in_schema=False)

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi.testclient import TestClient
 
 USER = "erling"
@@ -14,13 +12,13 @@ def search(client: TestClient, **params) -> dict:
     return r.json()
 
 
-def names(page: dict) -> list[Optional[str]]:
+def names(page: dict) -> list[str | None]:
     return [s["name"] for s in page["items"]]
 
 
-def walk(client: TestClient, limit: int, **params) -> list[Optional[str]]:
+def walk(client: TestClient, limit: int, **params) -> list[str | None]:
     """Follow next_cursor to the end, returning every name seen in order."""
-    seen: list[Optional[str]] = []
+    seen: list[str | None] = []
     cursor = None
     for _ in range(100):
         page = search(client, limit=limit, cursor=cursor, **params)

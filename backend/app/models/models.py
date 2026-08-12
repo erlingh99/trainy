@@ -1,6 +1,6 @@
-from datetime import date as _Date, datetime, timezone
+from datetime import UTC, datetime
+from datetime import date as _Date
 from enum import StrEnum
-from typing import Optional
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -149,14 +149,14 @@ VALID_CHARACTERS: dict[SessionForm, frozenset[SessionCharacter]] = {
 class SessionPart(SQLModel):
     """One training modality within a session — each part carries its own stats."""
 
-    form: Optional[SessionForm] = None
-    character: Optional[SessionCharacter] = None
-    intensity: Optional[SessionIntensity] = None
-    surface: Optional[SessionSurface] = None
-    duration_seconds: Optional[int] = None
-    distance_km: Optional[float] = None
-    rpe: Optional[int] = None
-    competition: Optional[bool] = None
+    form: SessionForm | None = None
+    character: SessionCharacter | None = None
+    intensity: SessionIntensity | None = None
+    surface: SessionSurface | None = None
+    duration_seconds: int | None = None
+    distance_km: float | None = None
+    rpe: int | None = None
+    competition: bool | None = None
 
     @model_validator(mode="after")
     def check_combinations(self) -> "SessionPart":
@@ -181,7 +181,7 @@ class LactateMeasurement(SQLModel):
     """A single blood lactate reading taken during a session."""
 
     value_mmol: float
-    comment: Optional[str] = None
+    comment: str | None = None
 
     @model_validator(mode="after")
     def check_value(self) -> "LactateMeasurement":
@@ -194,8 +194,8 @@ class User(SQLModel, table=True):
     __tablename__ = "users"
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str = Field(index=True, unique=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    palette: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    palette: str | None = None
 
 
 class Session(SQLModel, table=True):
@@ -205,7 +205,7 @@ class Session(SQLModel, table=True):
     date: _Date = Field(index=True)
     session_no: int = 1
 
-    name: Optional[str] = None
+    name: str | None = None
     parts: list[dict] = Field(
         default_factory=list,
         sa_column=sa.Column(sa.JSON, nullable=False, server_default="[]"),
@@ -216,38 +216,38 @@ class Session(SQLModel, table=True):
     )
 
     status: str = SessionStatus.planned
-    comment: Optional[str] = None
+    comment: str | None = None
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # Schemas (request/response)
 class UserCreate(SQLModel):
     name: str
-    palette: Optional[str] = None
+    palette: str | None = None
 
 
 class SessionCreate(SQLModel):
     user_id: str
     date: _Date
     session_no: int = 1
-    name: Optional[str] = None
+    name: str | None = None
     parts: list[SessionPart] = []
     lactate_measurements: list[LactateMeasurement] = []
     status: SessionStatus = SessionStatus.planned
-    comment: Optional[str] = None
+    comment: str | None = None
     buddy_usernames: list[str] = []
 
 
 class SessionUpdate(SQLModel):
-    date: Optional[_Date] = None
-    session_no: Optional[int] = None
-    name: Optional[str] = None
-    parts: Optional[list[SessionPart]] = None
-    lactate_measurements: Optional[list[LactateMeasurement]] = None
-    status: Optional[SessionStatus] = None
-    comment: Optional[str] = None
+    date: _Date | None = None
+    session_no: int | None = None
+    name: str | None = None
+    parts: list[SessionPart] | None = None
+    lactate_measurements: list[LactateMeasurement] | None = None
+    status: SessionStatus | None = None
+    comment: str | None = None
 
 
 class Goal(SQLModel, table=True):
@@ -256,7 +256,7 @@ class Goal(SQLModel, table=True):
     sessions_per_week: float = 0.0
     hours_per_week: float = 0.0
     km_per_week: float = 0.0
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class GoalUpdate(SQLModel):
@@ -274,13 +274,13 @@ class GarminCredentials(SQLModel, table=True):
     user_id: str = Field(primary_key=True, foreign_key="users.id")
     garmin_username: str
     garmin_password: str
-    di_token: Optional[str] = None
-    di_refresh_token: Optional[str] = None
-    di_client_id: Optional[str] = None
-    token_expires_at: Optional[datetime] = None
+    di_token: str | None = None
+    di_refresh_token: str | None = None
+    di_client_id: str | None = None
+    token_expires_at: datetime | None = None
     mfa_pending: bool = False
-    mfa_state: Optional[str] = None
-    last_sync_at: Optional[datetime] = None
-    last_sync_error: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    mfa_state: str | None = None
+    last_sync_at: datetime | None = None
+    last_sync_error: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -30,7 +30,9 @@ def seed(db_path):
     user_id = "u1"
     with engine.begin() as conn:
         conn.execute(
-            sa.text("INSERT INTO users (id, name, created_at) VALUES (:i, :n, '2026-01-01')"),
+            sa.text(
+                "INSERT INTO users (id, name, created_at) VALUES (:i, :n, '2026-01-01')"
+            ),
             {"i": user_id, "n": USER},
         )
 

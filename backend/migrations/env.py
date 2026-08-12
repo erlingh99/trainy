@@ -1,14 +1,15 @@
-from logging.config import fileConfig
 import sys
+from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config, pool
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from app.models import models as _models  # noqa: F401, E402 — registers all SQLModel tables
-from sqlmodel import SQLModel  # noqa: E402
+from sqlmodel import SQLModel
+
+from app.models import models  # noqa: F401 - register models with SQLModel
 
 config = context.config
 

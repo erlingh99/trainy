@@ -39,7 +39,10 @@ CASES = [
     ),
     pytest.param([], [], id="handles-sessions-with-no-parts"),
     pytest.param(
-        [{"form": "cycling", "character": "recovery"}, {"form": "running", "character": "long"}],
+        [
+            {"form": "cycling", "character": "recovery"},
+            {"form": "running", "character": "long"},
+        ],
         [
             {"form": "cycling", "character": None, "intensity": "recovery"},
             {"form": "running", "character": "long"},
@@ -73,7 +76,11 @@ def _parts(engine) -> list[dict]:
 def _run(cfg, engine, parts: list[dict]) -> list[dict]:
     command.upgrade(cfg, BEFORE_LEGACY_CHARACTERS)
     with engine.begin() as c:
-        c.execute(sa.text("INSERT INTO users (id, name, created_at) VALUES ('u1','e','2026-01-01')"))
+        c.execute(
+            sa.text(
+                "INSERT INTO users (id, name, created_at) VALUES ('u1','e','2026-01-01')"
+            )
+        )
         c.execute(
             sa.text(
                 "INSERT INTO sessions (id, user_id, date, session_no, parts,"

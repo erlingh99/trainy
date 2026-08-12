@@ -9,7 +9,7 @@ def _fernet() -> Fernet:
         raise RuntimeError(
             "GARMIN_SECRET_KEY is not set. "
             "Generate one with: python -c "
-            "\"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            '"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
         )
     return Fernet(key.encode())
 

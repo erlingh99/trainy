@@ -6,8 +6,8 @@ merge each activity into the training plan.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Literal, Optional
+from datetime import UTC, date, datetime
+from typing import Literal
 
 from ..models.models import Session, SessionStatus
 
@@ -78,7 +78,7 @@ _NO_DISTANCE_FORMS = {"strength", "elliptical"}
 @dataclass
 class CandidateSession:
     id: str
-    name: Optional[str]
+    name: str | None
     parts: list[dict]
 
 
@@ -86,13 +86,13 @@ class CandidateSession:
 class ActivityProposal:
     garmin_activity_id: int
     date: date
-    form: Optional[str]
-    surface: Optional[str]
+    form: str | None
+    surface: str | None
     duration_seconds: int
-    distance_km: Optional[float]
-    activity_name: Optional[str]
+    distance_km: float | None
+    activity_name: str | None
     match_status: Literal["matched", "ambiguous", "unmatched", "already_done"]
-    matched_session_id: Optional[str]
+    matched_session_id: str | None
     candidate_sessions: list[CandidateSession]
     proposed_action: Literal["match", "create", "skip"]
 
@@ -104,12 +104,12 @@ def activity_date(activity: dict) -> date:
     """Parse startTimeLocal (YYYY-MM-DD HH:MM:SS), fall back to startTimeGMT."""
     raw = activity.get("startTimeLocal") or activity.get("startTimeGMT", "")
     try:
-        return datetime.strptime(raw[:10], "%Y-%m-%d").date()
+        return date.fromisoformat(raw[:10])
     except (ValueError, TypeError):
-        return date.today()
+        return datetime.now(UTC).date()
 
 
-def make_session_name(activity: dict) -> Optional[str]:
+def make_session_name(activity: dict) -> str | None:
     """
     Return activityName if it is not a Garmin generic default.
     Generic means it equals the typeDisplayName (case-insensitive) or is blank.
@@ -118,19 +118,19 @@ def make_session_name(activity: dict) -> Optional[str]:
     if not name:
         return None
     generic = (
-        activity.get("activityType", {}).get("typeDisplayName") or ""
-    ).strip().lower()
+        (activity.get("activityType", {}).get("typeDisplayName") or "").strip().lower()
+    )
     if name.lower() == generic:
         return None
     return name
 
 
-def _detect_form(activity: dict) -> Optional[str]:
+def _detect_form(activity: dict) -> str | None:
     type_key = (activity.get("activityType") or {}).get("typeKey", "").lower()
     return _FORM_MAP.get(type_key)
 
 
-def _infer_surface(type_key: str) -> Optional[str]:
+def _infer_surface(type_key: str) -> str | None:
     return _SURFACE_MAP.get(type_key)
 
 
@@ -139,11 +139,11 @@ def activity_to_part(activity: dict) -> dict:
     type_key = (activity.get("activityType") or {}).get("typeKey", "").lower()
     form = _FORM_MAP.get(type_key)
 
-    duration = int(round(float(activity.get("duration") or 0)))
+    duration = round(float(activity.get("duration") or 0))
 
     dist_raw = activity.get("distance")
     if dist_raw and form not in _NO_DISTANCE_FORMS:
-        distance_km: Optional[float] = round(float(dist_raw) / 1000, 2)
+        distance_km: float | None = round(float(dist_raw) / 1000, 2)
     else:
         distance_km = None
 
@@ -200,25 +200,33 @@ def _map_one(
     type_key = (activity.get("activityType") or {}).get("typeKey", "").lower()
     # Terrain/trail running defaults to running, but if an unclaimed orienteering
     # session is planned for this day, match it to that instead.
-    if type_key in _TERRAIN_RUNNING_KEYS and form == "running":
-        if any(
+    if (
+        type_key in _TERRAIN_RUNNING_KEYS
+        and form == "running"
+        and any(
             s.date == act_date
             and s.status == SessionStatus.planned
             and s.parts
             and s.parts[0].get("form") == "orienteering"
             and s.id not in claimed
             for s in existing_sessions
-        ):
-            form = "orienteering"
-    duration = int(round(float(activity.get("duration") or 0)))
+        )
+    ):
+        form = "orienteering"
+    duration = round(float(activity.get("duration") or 0))
     dist_raw = activity.get("distance")
-    dist = round(float(dist_raw) / 1000, 2) if dist_raw and form not in _NO_DISTANCE_FORMS else None
+    dist = (
+        round(float(dist_raw) / 1000, 2)
+        if dist_raw and form not in _NO_DISTANCE_FORMS
+        else None
+    )
     name = make_session_name(activity)
     activity_id = int(activity.get("activityId") or 0)
     surface = _infer_surface(type_key) if form == "running" else None
 
     done_matches = [
-        s for s in existing_sessions
+        s
+        for s in existing_sessions
         if s.date == act_date
         and s.status == SessionStatus.done
         and (not s.parts or s.parts[0].get("form") == form)
@@ -237,13 +245,18 @@ def _map_one(
             activity_name=name,
             match_status="already_done",
             matched_session_id=done_session.id,
-            candidate_sessions=[CandidateSession(id=done_session.id, name=done_session.name, parts=done_session.parts)],
+            candidate_sessions=[
+                CandidateSession(
+                    id=done_session.id, name=done_session.name, parts=done_session.parts
+                )
+            ],
             proposed_action="skip",
         )
 
     candidates = sorted(
         (
-            s for s in existing_sessions
+            s
+            for s in existing_sessions
             if s.date == act_date
             and s.status == SessionStatus.planned
             and (not s.parts or s.parts[0].get("form") == form)
@@ -256,7 +269,9 @@ def _map_one(
     ]
 
     if form is None:
-        status: Literal["matched", "ambiguous", "unmatched", "already_done"] = "ambiguous"
+        status: Literal["matched", "ambiguous", "unmatched", "already_done"] = (
+            "ambiguous"
+        )
         matched_id = None
         action: Literal["match", "create", "skip"] = "skip"
     elif candidates:
