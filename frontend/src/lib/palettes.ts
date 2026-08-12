@@ -1,14 +1,7 @@
 import type { CSSProperties } from "react";
 
 export type PaletteId =
-  | "default"
-  | "forest"
-  | "ocean"
-  | "ember"
-  | "amethyst"
-  | "rose"
-  | "nordic"
-  | "obsidian";
+  "default" | "forest" | "ocean" | "ember" | "amethyst" | "rose" | "nordic" | "obsidian";
 
 export type Palette = {
   id: PaletteId;

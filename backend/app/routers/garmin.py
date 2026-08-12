@@ -12,15 +12,15 @@ Sync is two-phase:
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timezone
-from typing import Any, Literal, Optional
+from datetime import UTC, date, datetime
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..database.db import get_session
+from ..dependencies import DbSession
 from ..garmin.client import (
     GarminAuthError,
     GarminClient,
@@ -48,9 +48,9 @@ class GarminMfaRequest(BaseModel):
 
 class GarminStatusResponse(BaseModel):
     connected: bool
-    garmin_username: Optional[str] = None
-    last_sync_at: Optional[str] = None
-    last_sync_error: Optional[str] = None
+    garmin_username: str | None = None
+    last_sync_at: str | None = None
+    last_sync_error: str | None = None
     mfa_pending: bool = False
 
 
@@ -61,20 +61,20 @@ class SyncPreviewRequest(BaseModel):
 
 class CandidateSessionOut(BaseModel):
     id: str
-    name: Optional[str] = None
+    name: str | None = None
     parts: list[dict]
 
 
 class ActivityProposalOut(BaseModel):
     garmin_activity_id: int
     date: str
-    form: Optional[str] = None
-    surface: Optional[str] = None
+    form: str | None = None
+    surface: str | None = None
     duration_seconds: int
-    distance_km: Optional[float] = None
-    activity_name: Optional[str] = None
+    distance_km: float | None = None
+    activity_name: str | None = None
     match_status: str
-    matched_session_id: Optional[str] = None
+    matched_session_id: str | None = None
     candidate_sessions: list[CandidateSessionOut]
     proposed_action: str
 
@@ -82,13 +82,13 @@ class ActivityProposalOut(BaseModel):
 class ApplyItem(BaseModel):
     garmin_activity_id: int
     date: date
-    form: Optional[str] = None
-    surface: Optional[str] = None
+    form: str | None = None
+    surface: str | None = None
     duration_seconds: int
-    distance_km: Optional[float] = None
-    activity_name: Optional[str] = None
+    distance_km: float | None = None
+    activity_name: str | None = None
     action: Literal["match", "create", "skip"]
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 class SyncApplyRequest(BaseModel):
@@ -113,7 +113,7 @@ async def _resolve_user(db: AsyncSession, user: str) -> User:
     return u
 
 
-async def _get_creds(db: AsyncSession, user_id: str) -> GarminCredentials:
+async def _get_creds(db: DbSession, user_id: str) -> GarminCredentials:
     creds = await db.get(GarminCredentials, user_id)
     if not creds:
         raise HTTPException(400, "Garmin account not connected for this user")
@@ -125,7 +125,9 @@ def _creds_to_cache(creds: GarminCredentials) -> TokenCache:
         di_token=creds.di_token,
         di_refresh_token=creds.di_refresh_token,
         di_client_id=creds.di_client_id,
-        token_expires_at=creds.token_expires_at.isoformat() if creds.token_expires_at else None,
+        token_expires_at=creds.token_expires_at.isoformat()
+        if creds.token_expires_at
+        else None,
     )
 
 
@@ -135,7 +137,7 @@ def _apply_cache_to_creds(cache: TokenCache, creds: GarminCredentials) -> None:
     creds.di_client_id = cache.get("di_client_id")
     raw = cache.get("token_expires_at")
     creds.token_expires_at = datetime.fromisoformat(raw) if raw else None
-    creds.updated_at = datetime.now(timezone.utc)
+    creds.updated_at = datetime.now(UTC)
 
 
 def _proposal_to_out(p: ActivityProposal) -> ActivityProposalOut:
@@ -170,18 +172,23 @@ def _garmin_error_to_http(e: Exception) -> HTTPException:
 
 @router.post("/connect")
 async def connect_garmin(
+    db: DbSession,
     payload: GarminConnectRequest,
     user: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ):
     """Store credentials and initiate login. Returns 202 if MFA is required."""
     u = await _resolve_user(db, user)
 
     creds = await db.get(GarminCredentials, u.id)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if creds is None:
-        creds = GarminCredentials(user_id=u.id, garmin_username=payload.garmin_username,
-                                   garmin_password=encrypt_password(payload.garmin_password), created_at=now, updated_at=now)
+        creds = GarminCredentials(
+            user_id=u.id,
+            garmin_username=payload.garmin_username,
+            garmin_password=encrypt_password(payload.garmin_password),
+            created_at=now,
+            updated_at=now,
+        )
     else:
         creds.garmin_username = payload.garmin_username
         creds.garmin_password = encrypt_password(payload.garmin_password)
@@ -192,18 +199,21 @@ async def connect_garmin(
     db.add(creds)
     await db.flush()
 
-    client = GarminClient(payload.garmin_username, payload.garmin_password)  # use plaintext from request, not from DB
+    client = GarminClient(
+        payload.garmin_username, payload.garmin_password
+    )  # use plaintext from request, not from DB
     try:
         cache, mfa_required = await asyncio.to_thread(client.login)
     except Exception as e:
         await db.rollback()
-        raise _garmin_error_to_http(e)
+        raise _garmin_error_to_http(e) from e
 
     if mfa_required:
         creds.mfa_pending = True
         creds.mfa_state = client.pending_mfa_state
         db.add(creds)
         from fastapi.responses import JSONResponse
+
         return JSONResponse(status_code=202, content={"mfa_required": True})
 
     _apply_cache_to_creds(cache, creds)
@@ -215,9 +225,9 @@ async def connect_garmin(
 
 @router.post("/mfa")
 async def complete_mfa(
+    db: DbSession,
     payload: GarminMfaRequest,
     user: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ):
     u = await _resolve_user(db, user)
     creds = await _get_creds(db, u.id)
@@ -225,11 +235,15 @@ async def complete_mfa(
     if not creds.mfa_pending or not creds.mfa_state:
         raise HTTPException(400, "No pending MFA challenge — connect first")
 
-    client = GarminClient(creds.garmin_username, decrypt_password(creds.garmin_password))
+    client = GarminClient(
+        creds.garmin_username, decrypt_password(creds.garmin_password)
+    )
     try:
-        cache = await asyncio.to_thread(client.resume_mfa, creds.mfa_state, payload.mfa_code)
+        cache = await asyncio.to_thread(
+            client.resume_mfa, creds.mfa_state, payload.mfa_code
+        )
     except Exception as e:
-        raise _garmin_error_to_http(e)
+        raise _garmin_error_to_http(e) from e
 
     _apply_cache_to_creds(cache, creds)
     creds.mfa_pending = False
@@ -240,8 +254,8 @@ async def complete_mfa(
 
 @router.get("/status")
 async def garmin_status(
+    db: DbSession,
     user: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ) -> GarminStatusResponse:
     u = await _resolve_user(db, user)
     creds = await db.get(GarminCredentials, u.id)
@@ -252,8 +266,8 @@ async def garmin_status(
 
 @router.delete("/disconnect", status_code=204)
 async def disconnect_garmin(
+    db: DbSession,
     user: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ):
     u = await _resolve_user(db, user)
     creds = await db.get(GarminCredentials, u.id)
@@ -263,9 +277,9 @@ async def disconnect_garmin(
 
 @router.post("/sync/preview")
 async def sync_preview(
+    db: DbSession,
     payload: SyncPreviewRequest,
     user: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ) -> list[ActivityProposalOut]:
     """
     Fetch Garmin activities for the date range and return proposed actions.
@@ -275,11 +289,17 @@ async def sync_preview(
     creds = await _get_creds(db, u.id)
 
     if creds.mfa_pending:
-        raise HTTPException(400, "MFA verification pending — complete via /api/garmin/mfa first")
+        raise HTTPException(
+            400, "MFA verification pending — complete via /api/garmin/mfa first"
+        )
     if not creds.di_token:
-        raise HTTPException(400, "Not authenticated with Garmin — reconnect via /api/garmin/connect")
+        raise HTTPException(
+            400, "Not authenticated with Garmin — reconnect via /api/garmin/connect"
+        )
 
-    client = GarminClient(creds.garmin_username, decrypt_password(creds.garmin_password))
+    client = GarminClient(
+        creds.garmin_username, decrypt_password(creds.garmin_password)
+    )
     cache = _creds_to_cache(creds)
 
     try:
@@ -287,7 +307,7 @@ async def sync_preview(
             client.get_activities, cache, payload.start_date, payload.end_date
         )
     except Exception as e:
-        raise _garmin_error_to_http(e)
+        raise _garmin_error_to_http(e) from e
 
     _apply_cache_to_creds(updated_cache, creds)
     db.add(creds)
@@ -310,9 +330,9 @@ async def sync_preview(
 
 @router.post("/sync/apply")
 async def sync_apply(
+    db: DbSession,
     payload: SyncApplyRequest,
     user: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ) -> SyncResult:
     """
     Execute the user-confirmed sync choices from a preview.
@@ -334,7 +354,9 @@ async def sync_apply(
         try:
             if item.action == "match":
                 if not item.session_id:
-                    errors.append(f"activity {item.garmin_activity_id}: action=match but no session_id")
+                    errors.append(
+                        f"activity {item.garmin_activity_id}: action=match but no session_id"
+                    )
                     continue
                 if item.session_id in matched_session_ids:
                     errors.append(
@@ -343,7 +365,9 @@ async def sync_apply(
                     continue
                 s = await db.get(Session, item.session_id)
                 if not s or s.user_id != u.id:
-                    errors.append(f"activity {item.garmin_activity_id}: session {item.session_id} not found")
+                    errors.append(
+                        f"activity {item.garmin_activity_id}: session {item.session_id} not found"
+                    )
                     continue
                 # Merge actual metrics into parts[0], overwriting estimated values
                 parts = list(s.parts)
@@ -351,7 +375,11 @@ async def sync_apply(
                     parts[0] = {
                         **parts[0],
                         "duration_seconds": item.duration_seconds,
-                        **({"distance_km": item.distance_km} if item.distance_km is not None else {}),
+                        **(
+                            {"distance_km": item.distance_km}
+                            if item.distance_km is not None
+                            else {}
+                        ),
                     }
                 else:
                     part: dict[str, Any] = {"duration_seconds": item.duration_seconds}
@@ -366,7 +394,7 @@ async def sync_apply(
                 s.status = SessionStatus.done
                 if s.name is None and item.activity_name:
                     s.name = item.activity_name
-                s.updated_at = datetime.now(timezone.utc)
+                s.updated_at = datetime.now(UTC)
                 db.add(s)
                 matched_session_ids.add(item.session_id)
                 matched += 1
@@ -383,7 +411,11 @@ async def sync_apply(
                 existing = list(result.all())
                 next_no = max((s.session_no for s in existing), default=0) + 1
 
-                part: dict = {"duration_seconds": item.duration_seconds if item.duration_seconds else None}
+                part: dict = {
+                    "duration_seconds": item.duration_seconds
+                    if item.duration_seconds
+                    else None
+                }
                 if item.form:
                     part["form"] = item.form
                 if item.surface:
@@ -402,10 +434,10 @@ async def sync_apply(
                 db.add(new_session)
                 created += 1
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - one bad activity must not abort the batch
             errors.append(f"activity {item.garmin_activity_id}: {e}")
 
-    creds.last_sync_at = datetime.now(timezone.utc)
+    creds.last_sync_at = datetime.now(UTC)
     creds.last_sync_error = "; ".join(errors) if errors else None
     db.add(creds)
 

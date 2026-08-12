@@ -6,18 +6,36 @@ from .helpers import USER, names, search, walk
 
 # Six sessions on consecutive days from 2026-07-01, newest = "none" on 07-06.
 FIXTURE = [
-    {"name": "Long run", "comment": "easy 100% effort", "status": "done",
-     "parts": [{"form": "running", "character": "long"}]},
-    {"name": "Intervals", "comment": "6x1000", "status": "planned",
-     "parts": [{"form": "running", "character": "interval"}],
-     "lactate_measurements": [{"value_mmol": 5.2}]},
-    {"name": "Race day", "status": "done",
-     "parts": [{"form": "orienteering", "character": "middle", "competition": True}],
-     "lactate_measurements": [{"value_mmol": 8.0}]},
-    {"name": "Gym", "comment": "a_b upper", "status": "done",
-     "parts": [{"form": "strength", "character": "upperbody"}]},
-    {"name": "Brick", "status": "skipped",
-     "parts": [{"form": "cycling"}, {"form": "running", "character": "tempo"}]},
+    {
+        "name": "Long run",
+        "comment": "easy 100% effort",
+        "status": "done",
+        "parts": [{"form": "running", "character": "long"}],
+    },
+    {
+        "name": "Intervals",
+        "comment": "6x1000",
+        "status": "planned",
+        "parts": [{"form": "running", "character": "interval"}],
+        "lactate_measurements": [{"value_mmol": 5.2}],
+    },
+    {
+        "name": "Race day",
+        "status": "done",
+        "parts": [{"form": "orienteering", "character": "middle", "competition": True}],
+        "lactate_measurements": [{"value_mmol": 8.0}],
+    },
+    {
+        "name": "Gym",
+        "comment": "a_b upper",
+        "status": "done",
+        "parts": [{"form": "strength", "character": "upperbody"}],
+    },
+    {
+        "name": "Brick",
+        "status": "skipped",
+        "parts": [{"form": "cycling"}, {"form": "running", "character": "tempo"}],
+    },
     {"name": None, "comment": "no name here", "status": "planned", "parts": []},
 ]
 
@@ -69,7 +87,11 @@ def test_first_page_shape(six):
 def test_limit_keeps_the_newest(six):
     page = search(six, limit=2)
     assert names(page) == NEWEST_FIRST[:2]
-    assert (page["total"], page["has_more"], page["next_cursor"]) == (6, True, "2026-07-05:1")
+    assert (page["total"], page["has_more"], page["next_cursor"]) == (
+        6,
+        True,
+        "2026-07-05:1",
+    )
 
 
 def test_total_is_first_page_only(six):
@@ -85,7 +107,10 @@ def test_total_reflects_the_filter(six):
 def test_no_matches(six):
     page = search(six, q="zzzz")
     assert (page["items"], page["total"], page["has_more"], page["next_cursor"]) == (
-        [], 0, False, None,
+        [],
+        0,
+        False,
+        None,
     )
 
 
@@ -100,13 +125,16 @@ def test_cursor_walk_preserves_filters(six, limit):
 
 
 # Several sessions on one date: session_no is what makes the cursor unambiguous.
-SAME_DAY = [{"name": f"same-{n}", "date": date(2026, 8, 1), "session_no": n} for n in range(1, 6)]
+SAME_DAY = [
+    {"name": f"same-{n}", "date": date(2026, 8, 1), "session_no": n}
+    for n in range(1, 6)
+]
 SAME_DAY_ORDER = ["after", "same-5", "same-4", "same-3", "same-2", "same-1"]
 
 
 @pytest.fixture
 def same_day(seed, client):
-    seed(SAME_DAY + [{"name": "after", "date": date(2026, 8, 2), "session_no": 1}])
+    seed([*SAME_DAY, {"name": "after", "date": date(2026, 8, 2), "session_no": 1}])
     return client
 
 
@@ -133,7 +161,10 @@ def test_cursor_walk_across_same_date_rows(same_day, limit):
     ],
 )
 def test_rejects_bad_input(six, params, status):
-    assert six.get("/api/sessions/search", params={"user": USER, **params}).status_code == status
+    assert (
+        six.get("/api/sessions/search", params={"user": USER, **params}).status_code
+        == status
+    )
 
 
 def test_unknown_user(six):
@@ -142,7 +173,9 @@ def test_unknown_user(six):
 
 def test_list_endpoint_still_returns_a_bare_array(six):
     """The week and month views depend on this shape, not the search envelope."""
-    r = six.get("/api/sessions", params={"user": USER, "from": "2026-07-01", "to": "2026-07-02"})
+    r = six.get(
+        "/api/sessions", params={"user": USER, "from": "2026-07-01", "to": "2026-07-02"}
+    )
     assert r.status_code == 200
     body = r.json()
     assert isinstance(body, list)

@@ -9,23 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UsersRouteImport } from './routes/users'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
-import { Route as UUsernameSearchRouteImport } from './routes/u.$username.search'
-import { Route as UUsernameDashboardRouteImport } from './routes/u.$username.dashboard'
 import { Route as CompareWeekWeekRouteImport } from './routes/compare.week.$week'
-import { Route as UUsernameWeekWeekRouteImport } from './routes/u.$username.week.$week'
+import { Route as UUsernameDashboardRouteImport } from './routes/u.$username.dashboard'
+import { Route as UUsernameSearchRouteImport } from './routes/u.$username.search'
 import { Route as UUsernameMonthYyyymmRouteImport } from './routes/u.$username.month.$yyyymm'
+import { Route as UUsernameWeekWeekRouteImport } from './routes/u.$username.week.$week'
 
-const UsersRoute = UsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UUsernameRoute = UUsernameRouteImport.update({
@@ -33,29 +33,29 @@ const UUsernameRoute = UUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UUsernameSearchRoute = UUsernameSearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => UUsernameRoute,
+const CompareWeekWeekRoute = CompareWeekWeekRouteImport.update({
+  id: '/compare/week/$week',
+  path: '/compare/week/$week',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const UUsernameDashboardRoute = UUsernameDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => UUsernameRoute,
 } as any)
-const CompareWeekWeekRoute = CompareWeekWeekRouteImport.update({
-  id: '/compare/week/$week',
-  path: '/compare/week/$week',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UUsernameWeekWeekRoute = UUsernameWeekWeekRouteImport.update({
-  id: '/week/$week',
-  path: '/week/$week',
+const UUsernameSearchRoute = UUsernameSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => UUsernameRoute,
 } as any)
 const UUsernameMonthYyyymmRoute = UUsernameMonthYyyymmRouteImport.update({
   id: '/month/$yyyymm',
   path: '/month/$yyyymm',
+  getParentRoute: () => UUsernameRoute,
+} as any)
+const UUsernameWeekWeekRoute = UUsernameWeekWeekRouteImport.update({
+  id: '/week/$week',
+  path: '/week/$week',
   getParentRoute: () => UUsernameRoute,
 } as any)
 
@@ -132,18 +132,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/u/$username': {
@@ -153,12 +153,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/u/$username/search': {
-      id: '/u/$username/search'
-      path: '/search'
-      fullPath: '/u/$username/search'
-      preLoaderRoute: typeof UUsernameSearchRouteImport
-      parentRoute: typeof UUsernameRoute
+    '/compare/week/$week': {
+      id: '/compare/week/$week'
+      path: '/compare/week/$week'
+      fullPath: '/compare/week/$week'
+      preLoaderRoute: typeof CompareWeekWeekRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/u/$username/dashboard': {
       id: '/u/$username/dashboard'
@@ -167,18 +167,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUsernameDashboardRouteImport
       parentRoute: typeof UUsernameRoute
     }
-    '/compare/week/$week': {
-      id: '/compare/week/$week'
-      path: '/compare/week/$week'
-      fullPath: '/compare/week/$week'
-      preLoaderRoute: typeof CompareWeekWeekRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/u/$username/week/$week': {
-      id: '/u/$username/week/$week'
-      path: '/week/$week'
-      fullPath: '/u/$username/week/$week'
-      preLoaderRoute: typeof UUsernameWeekWeekRouteImport
+    '/u/$username/search': {
+      id: '/u/$username/search'
+      path: '/search'
+      fullPath: '/u/$username/search'
+      preLoaderRoute: typeof UUsernameSearchRouteImport
       parentRoute: typeof UUsernameRoute
     }
     '/u/$username/month/$yyyymm': {
@@ -186,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/month/$yyyymm'
       fullPath: '/u/$username/month/$yyyymm'
       preLoaderRoute: typeof UUsernameMonthYyyymmRouteImport
+      parentRoute: typeof UUsernameRoute
+    }
+    '/u/$username/week/$week': {
+      id: '/u/$username/week/$week'
+      path: '/week/$week'
+      fullPath: '/u/$username/week/$week'
+      preLoaderRoute: typeof UUsernameWeekWeekRouteImport
       parentRoute: typeof UUsernameRoute
     }
   }

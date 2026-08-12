@@ -2,11 +2,11 @@ from collections import Counter
 from collections.abc import Sequence
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..database.db import get_session
+from ..dependencies import DbSession
 from ..models.models import Session, User
 
 router = APIRouter(prefix="/api/summary", tags=["summary"])
@@ -30,8 +30,8 @@ def _iso_week_range(iso_week: str) -> tuple[date, date]:
         start = date.fromisocalendar(year, week, 1)
         end = start + timedelta(days=6)
         return start, end
-    except Exception:
-        raise HTTPException(400, "iso_week must look like 2026-W22")
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, "iso_week must look like 2026-W22") from e
 
 
 def _month_range(yyyymm: str) -> tuple[date, date]:
@@ -43,8 +43,8 @@ def _month_range(yyyymm: str) -> tuple[date, date]:
             days=1
         )
         return start, end
-    except Exception:
-        raise HTTPException(400, "yyyymm must look like 2026-05")
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, "yyyymm must look like 2026-05") from e
 
 
 RUNNING_FORMS = {"running", "orienteering"}
@@ -83,17 +83,17 @@ def _aggregate(sessions: Sequence[Session]) -> dict:
 
 @router.get("/season")
 async def season_summary(
+    db: DbSession,
     user: str,
     from_date: str = Query(..., alias="from"),
     to_date: str = Query(..., alias="to"),
     status: str | None = Query(None),
-    db: AsyncSession = Depends(get_session),
 ):
     try:
         from_d = date.fromisoformat(from_date)
         to_d = date.fromisoformat(to_date)
-    except Exception:
-        raise HTTPException(400, "from/to must be YYYY-MM-DD")
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, "from/to must be YYYY-MM-DD") from e
     u = await _resolve_user(db, user)
     result = await db.exec(
         select(Session)
@@ -131,9 +131,9 @@ async def season_summary(
 
 @router.get("/week")
 async def week_summary(
+    db: DbSession,
     user: str,
     iso_week: str = Query(..., alias="iso_week"),
-    db: AsyncSession = Depends(get_session),
 ):
     u = await _resolve_user(db, user)
     start, end = _iso_week_range(iso_week)
@@ -154,9 +154,9 @@ async def week_summary(
 
 @router.get("/month")
 async def month_summary(
+    db: DbSession,
     user: str,
     yyyymm: str = Query(...),
-    db: AsyncSession = Depends(get_session),
 ):
     u = await _resolve_user(db, user)
     start, end = _month_range(yyyymm)

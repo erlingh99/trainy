@@ -1,9 +1,9 @@
 import json
 from collections import defaultdict
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import ColumnElement, func, or_, tuple_
 from sqlalchemy import select as sa_select
@@ -11,7 +11,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from ..database.db import get_session
+from ..dependencies import DbSession
 from ..models.models import (
     Session,
     SessionCharacter,
@@ -33,13 +33,19 @@ MAX_SEARCH_LIMIT = 500
 
 def _contains_pattern(term: str) -> str:
     """LIKE pattern matching `term` literally — user input may contain % or _."""
-    escaped = term.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2).replace("%", r"\%").replace("_", r"\_")
+    escaped = (
+        term.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2)
+        .replace("%", r"\%")
+        .replace("_", r"\_")
+    )
     return f"%{escaped}%"
 
 
 def _part_has(field: str, value: object):
     """Correlated EXISTS over the JSON `parts` array (SQLite json_each)."""
-    parts = func.json_each(col(Session.parts)).table_valued("value", joins_implicitly=True)
+    parts = func.json_each(col(Session.parts)).table_valued(
+        "value", joins_implicitly=True
+    )
     return (
         sa_select(1)
         .select_from(parts)
@@ -58,10 +64,10 @@ async def _resolve_user(db: AsyncSession, user: str) -> User:
 
 @router.get("")
 async def list_sessions(
+    db: DbSession,
     user: str = Query(...),
-    from_: Optional[date] = Query(None, alias="from"),
-    to: Optional[date] = None,
-    db: AsyncSession = Depends(get_session),
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: date | None = None,
 ):
     u = await _resolve_user(db, user)
     stmt = select(Session).where(Session.user_id == u.id)
@@ -77,33 +83,33 @@ async def list_sessions(
 class SessionSearchResult(BaseModel):
     items: list[Session]
     has_more: bool
-    next_cursor: Optional[str] = None
+    next_cursor: str | None = None
     # Only computed for the first page; later pages reuse the client's copy.
-    total: Optional[int] = None
+    total: int | None = None
 
 
 def _parse_cursor(cursor: str) -> tuple[date, int]:
     try:
         raw_date, raw_no = cursor.rsplit(":", 1)
         return date.fromisoformat(raw_date), int(raw_no)
-    except ValueError:
-        raise HTTPException(422, f"Invalid cursor: {cursor}")
+    except ValueError as e:
+        raise HTTPException(422, f"Invalid cursor: {cursor}") from e
 
 
 @router.get("/search")
 async def search_sessions(
+    db: DbSession,
     user: str = Query(...),
-    from_: Optional[date] = Query(None, alias="from"),
-    to: Optional[date] = None,
-    q: Optional[str] = None,
-    status: Optional[SessionStatus] = None,
-    form: Optional[SessionForm] = None,
-    character: Optional[SessionCharacter] = None,
-    competition: Optional[bool] = None,
-    has_lactate: Optional[bool] = None,
-    cursor: Optional[str] = None,
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: date | None = None,
+    q: str | None = None,
+    status: SessionStatus | None = None,
+    form: SessionForm | None = None,
+    character: SessionCharacter | None = None,
+    competition: bool | None = None,
+    has_lactate: bool | None = None,
+    cursor: str | None = None,
     limit: int = Query(DEFAULT_SEARCH_LIMIT, ge=1, le=MAX_SEARCH_LIMIT),
-    db: AsyncSession = Depends(get_session),
 ) -> SessionSearchResult:
     u = await _resolve_user(db, user)
 
@@ -137,11 +143,16 @@ async def search_sessions(
     total = (
         None
         if cursor
-        else (await db.scalar(sa_select(func.count()).select_from(Session).where(*conds)) or 0)
+        else (
+            await db.scalar(sa_select(func.count()).select_from(Session).where(*conds))
+            or 0
+        )
     )
 
     if cursor:
-        conds.append(tuple_(col(Session.date), col(Session.session_no)) < _parse_cursor(cursor))
+        conds.append(
+            tuple_(col(Session.date), col(Session.session_no)) < _parse_cursor(cursor)
+        )
 
     # Newest first, so a page keeps the most recent matches rather than the oldest.
     # Over-fetch by one to learn whether another page exists without a second query.
@@ -154,12 +165,16 @@ async def search_sessions(
     rows = list((await db.exec(stmt)).all())
     has_more = len(rows) > limit
     items = rows[:limit]
-    next_cursor = f"{items[-1].date.isoformat()}:{items[-1].session_no}" if has_more else None
-    return SessionSearchResult(items=items, has_more=has_more, next_cursor=next_cursor, total=total)
+    next_cursor = (
+        f"{items[-1].date.isoformat()}:{items[-1].session_no}" if has_more else None
+    )
+    return SessionSearchResult(
+        items=items, has_more=has_more, next_cursor=next_cursor, total=total
+    )
 
 
 @router.post("", status_code=201)
-async def create_session(payload: SessionCreate, db: AsyncSession = Depends(get_session)):
+async def create_session(payload: SessionCreate, db: DbSession):
     if not await db.get(User, payload.user_id):
         raise HTTPException(404, "Unknown user_id")
     s = Session(**payload.model_dump(exclude={"buddy_usernames"}))
@@ -177,21 +192,23 @@ async def create_session(payload: SessionCreate, db: AsyncSession = Depends(get_
             .order_by(col(Session.session_no).desc())
         )
         last = last_result.first()
-        db.add(Session(
-            user_id=buddy.id,
-            date=s.date,
-            session_no=(last.session_no + 1) if last else 1,
-            name=s.name,
-            parts=s.parts,
-            status=SessionStatus.planned,
-            comment=s.comment,
-        ))
+        db.add(
+            Session(
+                user_id=buddy.id,
+                date=s.date,
+                session_no=(last.session_no + 1) if last else 1,
+                name=s.name,
+                parts=s.parts,
+                status=SessionStatus.planned,
+                comment=s.comment,
+            )
+        )
 
     return s
 
 
 @router.patch("/{session_id}")
-async def update_session(session_id: str, payload: SessionUpdate, db: AsyncSession = Depends(get_session)):
+async def update_session(session_id: str, payload: SessionUpdate, db: DbSession):
     s = await db.get(Session, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -202,26 +219,26 @@ async def update_session(session_id: str, payload: SessionUpdate, db: AsyncSessi
         flag_modified(s, "parts")
     if "lactate_measurements" in data:
         flag_modified(s, "lactate_measurements")
-    s.updated_at = datetime.now(timezone.utc)
+    s.updated_at = datetime.now(UTC)
     db.add(s)
     return s
 
 
 @router.post("/reorder", status_code=200)
-async def reorder_sessions(payload: SessionReorder, db: AsyncSession = Depends(get_session)):
+async def reorder_sessions(payload: SessionReorder, db: DbSession):
     """Atomically assign session_no 1, 2, … to sessions in the given order."""
     for idx, session_id in enumerate(payload.ids, start=1):
         s = await db.get(Session, session_id)
         if not s:
             raise HTTPException(404, f"Session not found: {session_id}")
         s.session_no = idx
-        s.updated_at = datetime.now(timezone.utc)
+        s.updated_at = datetime.now(UTC)
         db.add(s)
     return {"reordered": len(payload.ids)}
 
 
 @router.delete("/{session_id}", status_code=204)
-async def delete_session(session_id: str, db: AsyncSession = Depends(get_session)):
+async def delete_session(session_id: str, db: DbSession):
     s = await db.get(Session, session_id)
     if not s:
         raise HTTPException(404, "Session not found")
@@ -231,24 +248,24 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_session
 class _DupSession(BaseModel):
     id: str
     date: str
-    name: Optional[str]
-    form: Optional[str]
-    duration_seconds: Optional[int]
-    distance_km: Optional[float]
+    name: str | None
+    form: str | None
+    duration_seconds: int | None
+    distance_km: float | None
 
 
 class _DupGroup(BaseModel):
     date: str
-    form: Optional[str]
+    form: str | None
     sessions: list[_DupSession]
 
 
 @router.get("/duplicates")
 async def find_duplicates(
+    db: DbSession,
     user: str = Query(...),
-    from_: Optional[date] = Query(None, alias="from"),
-    to: Optional[date] = None,
-    db: AsyncSession = Depends(get_session),
+    from_: Annotated[date | None, Query(alias="from")] = None,
+    to: date | None = None,
 ) -> list[_DupGroup]:
     """Return groups of identical done sessions (all fields match) in the given range."""
     u = await _resolve_user(db, user)
@@ -273,7 +290,7 @@ async def find_duplicates(
     for s in sessions:
         groups[_fingerprint(s)].append(s)
 
-    def _dur(s: Session) -> Optional[int]:
+    def _dur(s: Session) -> int | None:
         if not s.parts:
             return None
         d = s.parts[0].get("duration_seconds")
@@ -284,21 +301,23 @@ async def find_duplicates(
         if len(grp) < 2:
             continue
         s0 = grp[0]
-        dup_groups.append(_DupGroup(
-            date=str(s0.date),
-            form=s0.parts[0].get("form") if s0.parts else None,
-            sessions=[
-                _DupSession(
-                    id=s.id,
-                    date=str(s.date),
-                    name=s.name,
-                    form=s.parts[0].get("form") if s.parts else None,
-                    duration_seconds=_dur(s),
-                    distance_km=s.parts[0].get("distance_km") if s.parts else None,
-                )
-                for s in grp
-            ],
-        ))
+        dup_groups.append(
+            _DupGroup(
+                date=str(s0.date),
+                form=s0.parts[0].get("form") if s0.parts else None,
+                sessions=[
+                    _DupSession(
+                        id=s.id,
+                        date=str(s.date),
+                        name=s.name,
+                        form=s.parts[0].get("form") if s.parts else None,
+                        duration_seconds=_dur(s),
+                        distance_km=s.parts[0].get("distance_km") if s.parts else None,
+                    )
+                    for s in grp
+                ],
+            )
+        )
 
     dup_groups.sort(key=lambda g: g.date)
     return dup_groups

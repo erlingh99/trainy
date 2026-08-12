@@ -10,19 +10,21 @@ matches SessionCharacter and renders as a raw i18n key in the UI.
 """
 
 import json
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "4d9b2c5e8f31"
-down_revision: Union[str, Sequence[str], None] = "3c8a1f2e9d47"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "3c8a1f2e9d47"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 _INTENSITIES = {"recovery", "flow", "threshold", "vo2", "max"}
 
-_sessions = sa.table("sessions", sa.column("id", sa.String), sa.column("parts", sa.JSON))
+_sessions = sa.table(
+    "sessions", sa.column("id", sa.String), sa.column("parts", sa.JSON)
+)
 
 
 def _rows(conn):
@@ -45,7 +47,9 @@ def upgrade() -> None:
             p["character"] = None
             changed = True
         if changed:
-            conn.execute(_sessions.update().where(_sessions.c.id == sid).values(parts=parts))
+            conn.execute(
+                _sessions.update().where(_sessions.c.id == sid).values(parts=parts)
+            )
 
 
 def downgrade() -> None:

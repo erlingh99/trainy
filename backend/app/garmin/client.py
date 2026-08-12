@@ -3,7 +3,7 @@ Garmin Connect client for the trainy backend.
 
 Adapted from https://github.com/diegoscarabelli/garmin-health-data — copies the
 approach without importing the package. Key WAF-bypass techniques:
-- 30–45 second delay between SSO page GET and credential POST (do not reduce)
+- 30-45 second delay between SSO page GET and credential POST (do not reduce)
 - TLS fingerprinting via curl_cffi (optional, falls back to plain requests)
 - 5-strategy login fallback chain
 - DI OAuth2 Bearer tokens only (no JWT cookie fallback)
@@ -15,8 +15,8 @@ import logging
 import random
 import re
 import time
-from datetime import date, datetime, timezone
-from typing import Any, Optional, TypedDict, cast
+from datetime import UTC, date, datetime
+from typing import Any, TypedDict, cast
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -35,7 +35,9 @@ _LOG = logging.getLogger(__name__)
 _SSO = "https://sso.garmin.com"
 _CONNECTAPI = "https://connectapi.garmin.com"
 _DI_TOKEN_URL = "https://diauth.garmin.com/di-oauth2-service/oauth/token"
-_DI_GRANT_TYPE = "https://connectapi.garmin.com/di-oauth2-service/oauth/grant/service_ticket"
+_DI_GRANT_TYPE = (
+    "https://connectapi.garmin.com/di-oauth2-service/oauth/grant/service_ticket"
+)
 
 # Garmin rotates these quarterly; newest first so production uses the current one
 _DI_CLIENT_IDS = (
@@ -76,10 +78,10 @@ _CFFI_PROFILES = ("chrome", "chrome110", "safari", "safari15_5", "edge99")
 
 
 class TokenCache(TypedDict):
-    di_token: Optional[str]
-    di_refresh_token: Optional[str]
-    di_client_id: Optional[str]
-    token_expires_at: Optional[str]  # ISO UTC datetime or None
+    di_token: str | None
+    di_refresh_token: str | None
+    di_client_id: str | None
+    token_expires_at: str | None  # ISO UTC datetime or None
 
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
@@ -104,7 +106,7 @@ def _basic_auth(client_id: str) -> str:
     return "Basic " + base64.b64encode(f"{client_id}:".encode()).decode()
 
 
-def _native_headers(extra: Optional[dict] = None) -> dict:
+def _native_headers(extra: dict | None = None) -> dict:
     h: dict = {
         "User-Agent": _NATIVE_UA,
         "X-Garmin-User-Agent": _NATIVE_X_GARMIN_UA,
@@ -131,18 +133,18 @@ def _decode_jwt_payload(token: str) -> dict:
     padding = "=" * (-len(parts[1]) % 4)
     try:
         return json.loads(base64.urlsafe_b64decode(parts[1] + padding).decode())
-    except Exception:
+    except ValueError:
         return {}
 
 
-def _token_exp_dt(token: str) -> Optional[datetime]:
+def _token_exp_dt(token: str) -> datetime | None:
     exp = _decode_jwt_payload(token).get("exp")
     if exp:
-        return datetime.fromtimestamp(int(exp), tz=timezone.utc)
+        return datetime.fromtimestamp(int(exp), tz=UTC)
     return None
 
 
-def _client_id_from_jwt(token: str) -> Optional[str]:
+def _client_id_from_jwt(token: str) -> str | None:
     p = _decode_jwt_payload(token)
     return p.get("client_id") or p.get("aud") or None
 
@@ -170,19 +172,19 @@ class GarminClient:
         self.username = username
         self.password = password
 
-        self.di_token: Optional[str] = None
-        self.di_refresh_token: Optional[str] = None
-        self.di_client_id: Optional[str] = None
-        self.token_expires_at: Optional[datetime] = None
+        self.di_token: str | None = None
+        self.di_refresh_token: str | None = None
+        self.di_client_id: str | None = None
+        self.token_expires_at: datetime | None = None
 
         # MFA session state, stashed during login when MFA is required
-        self._mfa_session: Optional[Any] = None
-        self._mfa_params: Optional[dict] = None
-        self._mfa_headers: Optional[dict] = None
+        self._mfa_session: Any | None = None
+        self._mfa_params: dict | None = None
+        self._mfa_headers: dict | None = None
         self._mfa_method: str = "email"
         self._mfa_strategy: str = "portal"
 
-        self._api_session: Optional[requests.Session] = None
+        self._api_session: requests.Session | None = None
 
     # ── Token cache I/O ──────────────────────────────────────────────────────
 
@@ -198,7 +200,9 @@ class GarminClient:
             di_token=self.di_token,
             di_refresh_token=self.di_refresh_token,
             di_client_id=self.di_client_id,
-            token_expires_at=self.token_expires_at.isoformat() if self.token_expires_at else None,
+            token_expires_at=self.token_expires_at.isoformat()
+            if self.token_expires_at
+            else None,
         )
 
     @property
@@ -239,15 +243,17 @@ class GarminClient:
         if HAS_CFFI:
             strategies.append(("widget+cffi", self._widget_cffi))
 
-        last_err: Optional[Exception] = None
+        last_err: Exception | None = None
         for name, fn in strategies:
             try:
                 _LOG.info("Garmin: trying strategy %s", name)
                 mfa_required = fn()
                 if mfa_required:
                     empty: TokenCache = TokenCache(
-                        di_token=None, di_refresh_token=None,
-                        di_client_id=None, token_expires_at=None,
+                        di_token=None,
+                        di_refresh_token=None,
+                        di_client_id=None,
+                        token_expires_at=None,
                     )
                     return empty, True
                 return self.dump_cache(), False
@@ -256,11 +262,13 @@ class GarminClient:
             except (GarminRateLimitError, GarminConnectionError) as e:
                 _LOG.warning("Strategy %s failed: %s", name, e)
                 last_err = e
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - any failure must fall through to the next strategy
                 _LOG.warning("Strategy %s unexpected error: %s", name, e)
                 last_err = e
 
-        raise GarminConnectionError(f"All login strategies failed. Last error: {last_err}")
+        raise GarminConnectionError(
+            f"All login strategies failed. Last error: {last_err}"
+        )
 
     def resume_mfa(self, mfa_state_json: str, mfa_code: str) -> TokenCache:
         """Complete an MFA challenge from persisted state."""
@@ -328,11 +336,15 @@ class GarminClient:
             try:
                 sess = cffi_requests.Session(impersonate=cast(Any, profile), timeout=30)
                 # Full WAF delay on first attempt only; subsequent profiles use a short retry delay
-                delay = random.uniform(_DELAY_MIN, _DELAY_MAX) if idx == 0 else random.uniform(2, 5)
+                delay = (
+                    random.uniform(_DELAY_MIN, _DELAY_MAX)
+                    if idx == 0
+                    else random.uniform(2, 5)
+                )
                 return self._portal_web_flow(sess, strategy="portal", delay=delay)
             except (GarminRateLimitError, GarminAuthError):
                 raise
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - any failure must fall through to the next profile
                 _LOG.debug("portal+cffi profile=%s: %s", profile, e)
         raise GarminConnectionError("portal+cffi: all TLS profiles failed")
 
@@ -353,16 +365,18 @@ class GarminClient:
         sess: Any,
         strategy: str = "portal",
         use_mobile_endpoint: bool = False,
-        delay: Optional[float] = None,
+        delay: float | None = None,
     ) -> bool:
         """
         Core portal/mobile JSON login flow.
 
-        The 30–45 second sleep between GET and POST is the primary Cloudflare WAF
+        The 30-45 second sleep between GET and POST is the primary Cloudflare WAF
         bypass. Garmin's Cloudflare blocks back-to-back SSO requests without it.
         """
         client_id = _MOBILE_CLIENT_ID if use_mobile_endpoint else _PORTAL_CLIENT_ID
-        service_url = _MOBILE_SERVICE_URL if use_mobile_endpoint else _PORTAL_SERVICE_URL
+        service_url = (
+            _MOBILE_SERVICE_URL if use_mobile_endpoint else _PORTAL_SERVICE_URL
+        )
         api_endpoint = "mobile" if use_mobile_endpoint else "portal"
 
         signin_url = f"{_SSO}/portal/sso/en-US/sign-in"
@@ -371,7 +385,10 @@ class GarminClient:
         get_resp = sess.get(
             signin_url,
             params={"clientId": client_id, "service": service_url},
-            headers={**browser_hdrs, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"},
+            headers={
+                **browser_hdrs,
+                "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+            },
             timeout=30,
         )
         if get_resp.status_code == 429:
@@ -379,12 +396,20 @@ class GarminClient:
         if not get_resp.ok:
             raise GarminConnectionError(f"{strategy} GET {get_resp.status_code}")
 
-        actual_delay = delay if delay is not None else random.uniform(_DELAY_MIN, _DELAY_MAX)
-        _LOG.info("%s login: waiting %.0fs (Cloudflare WAF bypass)", strategy, actual_delay)
+        actual_delay = (
+            delay if delay is not None else random.uniform(_DELAY_MIN, _DELAY_MAX)
+        )
+        _LOG.info(
+            "%s login: waiting %.0fs (Cloudflare WAF bypass)", strategy, actual_delay
+        )
         time.sleep(actual_delay)
 
         login_url = f"{_SSO}/{api_endpoint}/api/login"
-        login_params = {"clientId": client_id, "locale": "en-US", "service": service_url}
+        login_params = {
+            "clientId": client_id,
+            "locale": "en-US",
+            "service": service_url,
+        }
         post_headers = {
             **browser_hdrs,
             "Accept": "application/json, text/plain, */*",
@@ -408,17 +433,23 @@ class GarminClient:
         if r.status_code == 429:
             raise GarminRateLimitError(f"{strategy} POST 429")
         if not r.ok:
-            raise GarminConnectionError(f"{strategy} POST {r.status_code}: {r.text[:200]}")
+            raise GarminConnectionError(
+                f"{strategy} POST {r.status_code}: {r.text[:200]}"
+            )
 
         try:
             res = r.json()
         except Exception as e:
-            raise GarminConnectionError(f"{strategy} POST non-JSON: {r.text[:200]}") from e
+            raise GarminConnectionError(
+                f"{strategy} POST non-JSON: {r.text[:200]}"
+            ) from e
 
         resp_type = res.get("responseStatus", {}).get("type")
 
         if resp_type == "MFA_REQUIRED":
-            self._mfa_method = res.get("customerMfaInfo", {}).get("mfaLastMethodUsed", "email")
+            self._mfa_method = res.get("customerMfaInfo", {}).get(
+                "mfaLastMethodUsed", "email"
+            )
             self._mfa_session = sess
             self._mfa_params = login_params
             self._mfa_headers = post_headers
@@ -428,21 +459,29 @@ class GarminClient:
         if resp_type == "SUCCESSFUL":
             ticket = res.get("serviceTicketId")
             if not ticket:
-                raise GarminConnectionError(f"{strategy}: SUCCESSFUL response missing serviceTicketId")
+                raise GarminConnectionError(
+                    f"{strategy}: SUCCESSFUL response missing serviceTicketId"
+                )
             self._exchange_ticket(ticket, service_url)
             return False
 
         if resp_type == "INVALID_USERNAME_PASSWORD":
             raise GarminAuthError("Invalid username or password")
 
-        raise GarminConnectionError(f"{strategy}: unexpected response type: {resp_type!r}")
+        raise GarminConnectionError(
+            f"{strategy}: unexpected response type: {resp_type!r}"
+        )
 
     def _widget_cffi(self) -> bool:
         """SSO embed widget flow — last resort, frequently 429'd."""
         sess = cffi_requests.Session(impersonate="chrome", timeout=30)
         sso_base = f"{_SSO}/sso"
         sso_embed = f"{sso_base}/embed"
-        embed_params = {"id": "gauth-widget", "embedWidget": "true", "gauthHost": sso_base}
+        embed_params = {
+            "id": "gauth-widget",
+            "embedWidget": "true",
+            "gauthHost": sso_base,
+        }
         signin_params = {
             **embed_params,
             "gauthHost": sso_embed,
@@ -458,7 +497,9 @@ class GarminClient:
         if not r.ok:
             raise GarminConnectionError(f"widget embed GET {r.status_code}")
 
-        r = sess.get(f"{sso_base}/signin", params=signin_params, headers={"Referer": sso_embed})
+        r = sess.get(
+            f"{sso_base}/signin", params=signin_params, headers={"Referer": sso_embed}
+        )
         if r.status_code == 429:
             raise GarminRateLimitError("widget signin GET 429")
 
@@ -492,7 +533,9 @@ class GarminClient:
             return True
 
         if title.lower() != "success":
-            if any(h in title.lower() for h in ("invalid", "locked", "error", "incorrect")):
+            if any(
+                h in title.lower() for h in ("invalid", "locked", "error", "incorrect")
+            ):
                 raise GarminAuthError(f"widget: auth failed ({title!r})")
             raise GarminConnectionError(f"widget: unexpected title {title!r}")
 
@@ -532,11 +575,13 @@ class GarminClient:
             ),
         ]
 
-        last_err: Optional[Exception] = None
+        last_err: Exception | None = None
         for url, params, headers in endpoints:
             try:
-                r = sess.post(url, params=params, headers=headers, json=mfa_json, timeout=30)
-            except Exception as e:
+                r = sess.post(
+                    url, params=params, headers=headers, json=mfa_json, timeout=30
+                )
+            except OSError as e:
                 last_err = GarminConnectionError(str(e))
                 continue
 
@@ -549,7 +594,7 @@ class GarminClient:
 
             try:
                 res = r.json()
-            except Exception:
+            except ValueError:
                 last_err = GarminConnectionError(f"MFA non-JSON: {r.text[:200]}")
                 continue
 
@@ -566,7 +611,9 @@ class GarminClient:
 
             last_err = GarminConnectionError(f"MFA unexpected response: {resp_type!r}")
 
-        raise last_err or GarminConnectionError("MFA completion failed on all endpoints")
+        raise last_err or GarminConnectionError(
+            "MFA completion failed on all endpoints"
+        )
 
     def _complete_mfa_widget(self, mfa_code: str) -> None:
         sess = self._mfa_session
@@ -575,7 +622,11 @@ class GarminClient:
             f"{_SSO}/sso/verifyMFA/loginEnterMfaCode",
             params=self._mfa_params,
             headers=self._mfa_headers,
-            data={"mfa-code": mfa_code, "embed": "true", "fromPage": "setupEnterMfaCode"},
+            data={
+                "mfa-code": mfa_code,
+                "embed": "true",
+                "fromPage": "setupEnterMfaCode",
+            },
         )
         if r.status_code == 429:
             raise GarminRateLimitError("widget MFA 429")
@@ -614,7 +665,7 @@ class GarminClient:
                         "service_url": service_url,
                     },
                 )
-            except Exception as e:
+            except OSError as e:
                 _LOG.debug("DI exchange transport error for %s: %s", client_id, e)
                 continue
 
@@ -636,7 +687,7 @@ class GarminClient:
                 self.di_client_id = _client_id_from_jwt(token) or client_id
                 self.token_expires_at = _token_exp_dt(token)
                 return
-            except Exception as e:
+            except (ValueError, KeyError) as e:
                 _LOG.debug("DI exchange parse error for %s: %s", client_id, e)
 
         raise GarminAuthError("DI token exchange failed for all client IDs")
@@ -681,7 +732,12 @@ class GarminClient:
     def _di_post(**kwargs: Any) -> requests.Response:
         """POST to diauth.garmin.com with curl_cffi if available."""
         if HAS_CFFI:
-            return cast(requests.Response, cffi_requests.post(_DI_TOKEN_URL, impersonate="chrome", timeout=30, **kwargs))
+            return cast(
+                requests.Response,
+                cffi_requests.post(
+                    _DI_TOKEN_URL, impersonate="chrome", timeout=30, **kwargs
+                ),
+            )
         return requests.post(_DI_TOKEN_URL, timeout=30, **kwargs)  # type: ignore[call-overload]
 
     def _api_headers(self) -> dict:
@@ -693,7 +749,9 @@ class GarminClient:
         """Authenticated GET to connectapi.garmin.com, auto-retries once on 401."""
         if self._api_session is None:
             self._api_session = requests.Session()
-            self._api_session.mount("https://", HTTPAdapter(pool_connections=10, pool_maxsize=10))
+            self._api_session.mount(
+                "https://", HTTPAdapter(pool_connections=10, pool_maxsize=10)
+            )
 
         url = f"{_CONNECTAPI}/{path.lstrip('/')}"
         kwargs.setdefault("timeout", 15)
@@ -705,5 +763,7 @@ class GarminClient:
         if resp.status_code == 429:
             raise GarminRateLimitError(f"API GET 429: {path}")
         if not resp.ok:
-            raise GarminConnectionError(f"API GET {path}: HTTP {resp.status_code}: {resp.text[:200]}")
+            raise GarminConnectionError(
+                f"API GET {path}: HTTP {resp.status_code}: {resp.text[:200]}"
+            )
         return resp
