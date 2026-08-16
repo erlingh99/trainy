@@ -14,8 +14,8 @@ git pull origin main
 
 # Pull and start Docker containers
 echo -e "${BLUE}🐳 Pulling and starting Docker containers...${NC}"
-sudo docker compose pull
-sudo docker compose up -d
+docker compose pull
+docker compose up -d
 
 # Wait for the application to be ready
 echo -e "${BLUE}⏳ Waiting for application to be ready...${NC}"
@@ -36,10 +36,10 @@ else
 fi
 
 echo -e "${BLUE}📝 Checking logs...${NC}"
-sudo docker compose logs
+docker compose logs
 
 echo -e "${BLUE}🧹 Cleaning up old images...${NC}"
-sudo docker image prune -f
+docker image prune -f
 
 exit $status
  
