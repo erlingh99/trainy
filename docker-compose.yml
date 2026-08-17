@@ -12,6 +12,23 @@ services:
     volumes:
       - trainy_data:/app/data
     restart: unless-stopped
+    labels:
+      - docker-volume-backup.stop-during-backup=trainy-backup
+
+  trainy-backup:
+    image: offen/docker-volume-backup:v2
+    container_name: trainy_backup
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      BACKUP_CRON_EXPRESSION: "30 3 * * *"
+      BACKUP_FILENAME: "trainy-%Y-%m-%dT%H-%M-%S.tar.gz"
+      BACKUP_RETENTION_DAYS: "30"
+      BACKUP_STOP_DURING_BACKUP_LABEL: "trainy-backup"
+    volumes:
+      - trainy_data:/backup/trainy_data:ro
+      - ${BACKUP_ARCHIVE_ROOT}/trainy:/archive
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 networks:
   proxy:
