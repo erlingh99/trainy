@@ -21,7 +21,7 @@ docker compose up -d
 echo -e "${BLUE}⏳ Waiting for application to be ready...${NC}"
 status=1
 for i in $(seq 1 10); do
-    if curl -sf https://trainy.lan/api/health > /dev/null; then
+    if curl -sfk https://trainy.lan/api/health > /dev/null; then
         status=0
         break
     fi
