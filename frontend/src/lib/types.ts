@@ -40,6 +40,12 @@ export type SessionSearchResult = {
 
 export const RUNNING_FORMS = new Set(["running", "orienteering"]);
 
+export function runningOnly(sessions: Session[]): Session[] {
+  return sessions
+    .map((s) => ({ ...s, parts: s.parts.filter((p) => RUNNING_FORMS.has(p.form ?? "")) }))
+    .filter((s) => s.parts.length > 0);
+}
+
 const QUALITY_INTENSITIES = new Set(["threshold", "vo2", "max"]);
 
 export function computeTotals(sessions: Session[]): Totals {

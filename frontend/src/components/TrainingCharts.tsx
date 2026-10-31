@@ -19,7 +19,7 @@ import {
 } from "recharts";
 import { monthSessionsQuery } from "@/lib/queries";
 import { isoWeekOf, isoDate } from "@/lib/week";
-import { FORMS, FORM_COLORS } from "@/lib/types";
+import { FORMS, FORM_COLORS, runningOnly } from "@/lib/types";
 import type { Totals, Session, WeekTrend } from "@/lib/types";
 
 export function FormDistributionChart({ totals }: { totals: Totals }) {
@@ -78,11 +78,13 @@ export function WeeklyVolumeChart({
   yyyymm,
   metric = "hours",
   onlyDone = false,
+  running = false,
 }: {
   username: string;
   yyyymm: string;
   metric?: "hours" | "km";
   onlyDone?: boolean;
+  running?: boolean;
 }) {
   const { t } = useTranslation();
   const [year, month] = yyyymm.split("-").map(Number);
@@ -91,7 +93,8 @@ export function WeeklyVolumeChart({
   const end = `${yyyymm}-${String(lastDay).padStart(2, "0")}`;
 
   const { data: allSessions = [] } = useQuery(monthSessionsQuery(username, start, end));
-  const sessions = onlyDone ? allSessions.filter((s) => s.status === "done") : allSessions;
+  const doneSessions = onlyDone ? allSessions.filter((s) => s.status === "done") : allSessions;
+  const sessions = running ? runningOnly(doneSessions) : doneSessions;
 
   // Aggregate per week per form
   const byWeek = new Map<string, Map<string, { seconds: number; km: number }>>();

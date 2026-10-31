@@ -2,7 +2,7 @@
 // In-memory + localStorage-backed persistence under "mock-backend-v1".
 
 import { http, HttpResponse } from "msw";
-import { RUNNING_FORMS } from "@/lib/types";
+import { RUNNING_FORMS, runningOnly } from "@/lib/types";
 import type { Session, User, Goals } from "@/lib/types";
 
 const STORAGE_KEY = "mock-backend-v1";
@@ -140,11 +140,7 @@ function monthRange(yyyymm: string): [string, string] {
 }
 
 function aggregate(sessions: Session[], running = false) {
-  if (running) {
-    sessions = sessions
-      .map((s) => ({ ...s, parts: s.parts.filter((p) => RUNNING_FORMS.has(p.form ?? "")) }))
-      .filter((s) => s.parts.length > 0);
-  }
+  if (running) sessions = runningOnly(sessions);
   const allParts = sessions.flatMap((s) => s.parts);
   const total_seconds = allParts.reduce((a, p) => a + (p.duration_seconds || 0), 0);
   const runningParts = allParts.filter((p) => RUNNING_FORMS.has(p.form ?? ""));
