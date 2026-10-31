@@ -19,6 +19,10 @@ import {
 
 type Props = { username: string; defaultOpen?: boolean };
 
+function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function GarminSection({ username, defaultOpen = false }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -37,6 +41,8 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
   const [bulkFrom, setBulkFrom] = useState("");
   const [bulkTo, setBulkTo] = useState("");
   const [autoCreate, setAutoCreate] = useState(true);
+  const sinceLastKey = `garmin.sinceLast.${username}`;
+  const [sinceLast, setSinceLast] = useState(() => localStorage.getItem(sinceLastKey) === "true");
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncConfig, setSyncConfig] = useState<{
     start: string;
@@ -50,6 +56,16 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
   const [dupTo, setDupTo] = useState("");
   const [dupModalOpen, setDupModalOpen] = useState(false);
   const [dupConfig, setDupConfig] = useState<{ start: string; end: string } | null>(null);
+
+  const lastSyncDate = status?.last_sync_at ? localDate(new Date(status.last_sync_at)) : null;
+  const useSinceLast = sinceLast && lastSyncDate !== null;
+  const importFrom = useSinceLast ? lastSyncDate : bulkFrom;
+  const importTo = useSinceLast ? localDate(new Date()) : bulkTo;
+
+  const toggleSinceLast = (checked: boolean) => {
+    setSinceLast(checked);
+    localStorage.setItem(sinceLastKey, String(checked));
+  };
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["garmin", "status", username] });
@@ -234,7 +250,8 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                         <Input
                           type="date"
                           className="h-7 text-xs"
-                          value={bulkFrom}
+                          value={importFrom}
+                          disabled={useSinceLast}
                           onChange={(e) => setBulkFrom(e.target.value)}
                         />
                       </div>
@@ -245,11 +262,24 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                         <Input
                           type="date"
                           className="h-7 text-xs"
-                          value={bulkTo}
+                          value={importTo}
+                          disabled={useSinceLast}
                           onChange={(e) => setBulkTo(e.target.value)}
                         />
                       </div>
                     </div>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={useSinceLast}
+                        disabled={!lastSyncDate}
+                        onChange={(e) => toggleSinceLast(e.target.checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span className={lastSyncDate ? undefined : "text-muted-foreground"}>
+                        {lastSyncDate ? t("garmin.sinceLast") : t("garmin.sinceLastNone")}
+                      </span>
+                    </label>
                     <label className="flex items-center gap-2 text-xs">
                       <input
                         type="checkbox"
@@ -262,9 +292,9 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                     <Button
                       size="sm"
                       className="h-7 w-full text-xs"
-                      disabled={!bulkFrom || !bulkTo}
+                      disabled={!importFrom || !importTo}
                       onClick={() => {
-                        setSyncConfig({ start: bulkFrom, end: bulkTo, autoCreate });
+                        setSyncConfig({ start: importFrom, end: importTo, autoCreate });
                         setSyncModalOpen(true);
                       }}
                     >

@@ -192,6 +192,8 @@
     "bulkImport": "Massimport (bakåtfyllning)",
     "from": "Från",
     "to": "Till",
+    "sinceLast": "Från senaste importen till idag",
+    "sinceLastNone": "Från senaste importen till idag (ingen import än)",
     "autoCreate": "Skapa pass automatiskt för omatchade aktiviteter",
     "fetchReview": "Hämta och granska",
     "disconnect": "Koppla från",
