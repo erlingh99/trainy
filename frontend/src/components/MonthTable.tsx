@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { monthSessionsQuery } from "@/lib/queries";
-import { computeTotals } from "@/lib/types";
+import { RUNNING_FORMS, computeTotals, runningOnly } from "@/lib/types";
 import { km, secondsToHmm } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
@@ -17,6 +17,7 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
   const { t, i18n } = useTranslation();
   const [metric, setMetric] = useState<Metric>("hours");
   const [onlyDone, setOnlyDone] = useState(false);
+  const [running, setRunning] = useState(false);
 
   const [year, month] = yyyymm.split("-").map(Number);
   const start = `${yyyymm}-01`;
@@ -24,7 +25,8 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
   const end = `${yyyymm}-${String(lastDay).padStart(2, "0")}`;
   const { data: sessions = [] } = useQuery(monthSessionsQuery(username, start, end));
 
-  const statSessions = onlyDone ? sessions.filter((s) => s.status === "done") : sessions;
+  const doneSessions = onlyDone ? sessions.filter((s) => s.status === "done") : sessions;
+  const statSessions = running ? runningOnly(doneSessions) : doneSessions;
   const totals = computeTotals(statSessions);
 
   const byFormSeconds: Record<string, number> = {};
@@ -40,7 +42,9 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "long", year: "numeric" });
   const monthLabel = monthFmt.format(new Date(`${yyyymm}-01T00:00:00Z`));
 
-  const forms = ["running", "orienteering", "strength", "cycling", "elliptical"] as const;
+  const forms = (["running", "orienteering", "strength", "cycling", "elliptical"] as const).filter(
+    (f) => !running || RUNNING_FORMS.has(f),
+  );
 
   return (
     <div className="container mx-auto space-y-4 p-3">
@@ -82,6 +86,25 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
       </div>
 
       <div className="flex items-center justify-end gap-2">
+        <ToggleGroup
+          type="single"
+          value={running ? "running" : "all"}
+          onValueChange={(v) => v && setRunning(v === "running")}
+          className="h-6 gap-0 rounded-full border bg-muted p-0.5"
+        >
+          <ToggleGroupItem
+            value="all"
+            className="h-5 rounded-full px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+          >
+            {t("dashboard.log.all")}
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="running"
+            className="h-5 rounded-full px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+          >
+            {t("dashboard.log.running")}
+          </ToggleGroupItem>
+        </ToggleGroup>
         <ToggleGroup
           type="single"
           value={onlyDone ? "done" : "all"}
@@ -129,6 +152,7 @@ export function MonthTable({ username, yyyymm }: { username: string; yyyymm: str
           yyyymm={yyyymm}
           metric={metric}
           onlyDone={onlyDone}
+          running={running}
         />
       </div>
 

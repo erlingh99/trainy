@@ -180,7 +180,16 @@
       "km": "Km"
     },
     "character": "Øktkaraktærfordeling",
-    "monthly": "Månedsoversikt"
+    "monthly": "Månedsoversikt",
+    "log": {
+      "title": "Treningslogg",
+      "km": "Km",
+      "hours": "Timer",
+      "mixed": "Flere aktiviteter",
+      "showMore": "Vis flere uker",
+      "all": "Alle",
+      "running": "Løping"
+    }
   },
   "garmin": {
     "title": "Garmin Connect",

@@ -38,12 +38,20 @@ export type SessionSearchResult = {
   total?: number | null;
 };
 
+export const RUNNING_FORMS = new Set(["running", "orienteering"]);
+
+export function runningOnly(sessions: Session[]): Session[] {
+  return sessions
+    .map((s) => ({ ...s, parts: s.parts.filter((p) => RUNNING_FORMS.has(p.form ?? "")) }))
+    .filter((s) => s.parts.length > 0);
+}
+
 const QUALITY_INTENSITIES = new Set(["threshold", "vo2", "max"]);
 
 export function computeTotals(sessions: Session[]): Totals {
   const allParts = sessions.flatMap((s) => s.parts);
   const total_seconds = allParts.reduce((a, p) => a + (p.duration_seconds ?? 0), 0);
-  const runningParts = allParts.filter((p) => p.form === "running" || p.form === "orienteering");
+  const runningParts = allParts.filter((p) => RUNNING_FORMS.has(p.form ?? ""));
   const total_distance_km =
     Math.round(runningParts.reduce((a, p) => a + (p.distance_km ?? 0), 0) * 100) / 100;
   const quality_sessions = sessions.filter((s) =>
