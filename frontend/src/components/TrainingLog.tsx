@@ -140,7 +140,7 @@ export function TrainingLog({
               <Link
                 to="/u/$username/week/$week"
                 params={{ username, week }}
-                className="border-t py-1 pr-2 hover:text-primary"
+                className="flex h-14 flex-col justify-center border-t pr-2 hover:text-primary"
               >
                 <div className="text-xs font-semibold">W{week.split("-W")[1]}</div>
                 <div className="text-[11px] tabular-nums text-muted-foreground">
