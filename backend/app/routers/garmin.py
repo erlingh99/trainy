@@ -178,6 +178,19 @@ async def connect_garmin(
 ):
     """Store credentials and initiate login. Returns 202 if MFA is required."""
     u = await _resolve_user(db, user)
+    # Encrypt up front so a missing GARMIN_SECRET_KEY fails before the slow login.
+    encrypted_password = encrypt_password(payload.garmin_password)
+
+    # Log in before writing anything: login takes 30-45s+ (Cloudflare delay plus
+    # fallback strategies), and a flushed write would hold SQLite's write lock for
+    # that whole time, failing every other write with "database is locked".
+    client = GarminClient(
+        payload.garmin_username, payload.garmin_password
+    )  # use plaintext from request, not from DB
+    try:
+        cache, mfa_required = await asyncio.to_thread(client.login)
+    except Exception as e:
+        raise _garmin_error_to_http(e) from e
 
     creds = await db.get(GarminCredentials, u.id)
     now = datetime.now(UTC)
@@ -185,28 +198,14 @@ async def connect_garmin(
         creds = GarminCredentials(
             user_id=u.id,
             garmin_username=payload.garmin_username,
-            garmin_password=encrypt_password(payload.garmin_password),
+            garmin_password=encrypted_password,
             created_at=now,
             updated_at=now,
         )
     else:
         creds.garmin_username = payload.garmin_username
-        creds.garmin_password = encrypt_password(payload.garmin_password)
+        creds.garmin_password = encrypted_password
         creds.updated_at = now
-        # Reset any prior MFA state
-        creds.mfa_pending = False
-        creds.mfa_state = None
-    db.add(creds)
-    await db.flush()
-
-    client = GarminClient(
-        payload.garmin_username, payload.garmin_password
-    )  # use plaintext from request, not from DB
-    try:
-        cache, mfa_required = await asyncio.to_thread(client.login)
-    except Exception as e:
-        await db.rollback()
-        raise _garmin_error_to_http(e) from e
 
     if mfa_required:
         creds.mfa_pending = True
