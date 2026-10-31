@@ -192,6 +192,8 @@
     "bulkImport": "Bulk import (backfill)",
     "from": "From",
     "to": "To",
+    "sinceLast": "From last import until today",
+    "sinceLastNone": "From last import until today (no import yet)",
     "autoCreate": "Auto-create sessions for unmatched activities",
     "fetchReview": "Fetch & Review",
     "disconnect": "Disconnect",

@@ -192,6 +192,8 @@
     "bulkImport": "Masseimport (etterfylling)",
     "from": "Fra",
     "to": "Til",
+    "sinceLast": "Fra siste import til i dag",
+    "sinceLastNone": "Fra siste import til i dag (ingen import ennå)",
     "autoCreate": "Opprett automatisk økter for umatchede aktiviteter",
     "fetchReview": "Hent og gjennomgå",
     "disconnect": "Koble fra",
