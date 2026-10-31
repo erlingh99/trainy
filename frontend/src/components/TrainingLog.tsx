@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { monthSessionsQuery } from "@/lib/queries";
 import { isoDate, isoWeekOf, shiftIsoWeek, weekDays } from "@/lib/week";
 import { secondsToHmm } from "@/lib/format";
-import { FORMS, FORM_COLORS } from "@/lib/types";
+import { FORMS, FORM_COLORS, RUNNING_FORMS } from "@/lib/types";
 import type { Session } from "@/lib/types";
 
 const MIXED_COLOR = "#eab308";
 
 type Metric = "km" | "hours";
+type Activity = "all" | "running";
 
 type DayVolume = { seconds: number; km: number; forms: Set<string> };
 
@@ -21,16 +22,18 @@ const MAX_BUBBLE = 44;
 const MIN_BUBBLE = 8;
 const MIN_LABEL_INSIDE = 26;
 
-function aggregateByDay(sessions: Session[]): Map<string, DayVolume> {
+function aggregateByDay(sessions: Session[], activity: Activity): Map<string, DayVolume> {
   const byDay = new Map<string, DayVolume>();
   for (const s of sessions) {
-    const day = byDay.get(s.date) ?? { seconds: 0, km: 0, forms: new Set<string>() };
     for (const p of s.parts) {
+      const form = p.form ?? "other";
+      if (activity === "running" && !RUNNING_FORMS.has(form)) continue;
+      const day = byDay.get(s.date) ?? { seconds: 0, km: 0, forms: new Set<string>() };
       day.seconds += p.duration_seconds ?? 0;
       day.km += p.distance_km ?? 0;
-      day.forms.add(p.form ?? "other");
+      day.forms.add(form);
+      byDay.set(s.date, day);
     }
-    byDay.set(s.date, day);
   }
   return byDay;
 }
@@ -67,6 +70,7 @@ export function TrainingLog({
 }) {
   const { t } = useTranslation();
   const [metric, setMetric] = useState<Metric>("km");
+  const [activity, setActivity] = useState<Activity>("all");
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   const today = new Date();
@@ -86,7 +90,7 @@ export function TrainingLog({
   const sessions = allSessions.filter((s) =>
     onlyDone ? s.status === "done" : s.status !== "skipped",
   );
-  const byDay = aggregateByDay(sessions);
+  const byDay = aggregateByDay(sessions, activity);
 
   const value = (d: DayVolume) => (metric === "km" ? d.km : d.seconds);
   const max = Math.max(0, ...Array.from(byDay.values(), value));
@@ -100,26 +104,24 @@ export function TrainingLog({
 
   return (
     <div className="rounded-lg border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {t("dashboard.log.title")}
         </p>
-        <ToggleGroup
-          type="single"
-          value={metric}
-          onValueChange={(v) => v && setMetric(v as Metric)}
-          className="h-7 gap-0 rounded-full border bg-muted p-0.5"
-        >
-          {(["km", "hours"] as const).map((m) => (
-            <ToggleGroupItem
-              key={m}
-              value={m}
-              className="h-6 rounded-full px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
-            >
-              {t(`dashboard.log.${m}`)}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <div className="flex flex-wrap justify-end gap-2">
+          <PillToggle
+            value={activity}
+            options={["all", "running"]}
+            onChange={setActivity}
+            label={(a) => t(`dashboard.log.${a}`)}
+          />
+          <PillToggle
+            value={metric}
+            options={["km", "hours"]}
+            onChange={setMetric}
+            label={(m) => t(`dashboard.log.${m}`)}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-[minmax(72px,auto)_repeat(7,minmax(0,1fr))] items-center gap-x-1">
@@ -235,5 +237,36 @@ function Bubble({
         </span>
       )}
     </div>
+  );
+}
+
+function PillToggle<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: T[];
+  onChange: (v: T) => void;
+  label: (v: T) => string;
+}) {
+  return (
+    <ToggleGroup
+      type="single"
+      value={value}
+      onValueChange={(v) => v && onChange(v as T)}
+      className="h-7 gap-0 rounded-full border bg-muted p-0.5"
+    >
+      {options.map((o) => (
+        <ToggleGroupItem
+          key={o}
+          value={o}
+          className="h-6 rounded-full px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+        >
+          {label(o)}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }

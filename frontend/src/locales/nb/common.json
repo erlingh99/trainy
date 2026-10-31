@@ -186,7 +186,9 @@
       "km": "Km",
       "hours": "Timer",
       "mixed": "Flere aktiviteter",
-      "showMore": "Vis flere uker"
+      "showMore": "Vis flere uker",
+      "all": "Alle",
+      "running": "Løping"
     }
   },
   "garmin": {

@@ -186,7 +186,9 @@
       "km": "Km",
       "hours": "Hours",
       "mixed": "Multiple activities",
-      "showMore": "Show more weeks"
+      "showMore": "Show more weeks",
+      "all": "All",
+      "running": "Running"
     }
   },
   "garmin": {
