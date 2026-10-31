@@ -9,7 +9,7 @@ import {
   MonthlyComparisonChart,
   FormDistributionChart,
 } from "@/components/TrainingCharts";
-import { TrainingLog } from "@/components/TrainingLog";
+import { PillToggle, TrainingLog, type Activity } from "@/components/TrainingLog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -26,11 +26,15 @@ function DashboardPage() {
   const queryClient = useQueryClient();
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [onlyDone, setOnlyDone] = useState(false);
+  const [activity, setActivity] = useState<Activity>("all");
 
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 
-  const { data: season } = useQuery(seasonSummaryQuery(username, from, to, onlyDone));
+  const { data: season } = useQuery(
+    seasonSummaryQuery(username, from, to, onlyDone, activity === "running"),
+  );
+  const { data: seasonAll } = useQuery(seasonSummaryQuery(username, from, to, onlyDone));
   const { data: savedGoals } = useQuery(goalsQuery(username));
 
   const [editGoals, setEditGoals] = useState<Goals | null>(null);
@@ -39,7 +43,8 @@ function DashboardPage() {
 
   const totals = season?.totals;
   const weeks = season?.weeks ?? [];
-  const weeksWithData = weeks.filter((w) => w.totals.session_count > 0).length;
+  const goalTotals = seasonAll?.totals;
+  const weeksWithData = (seasonAll?.weeks ?? []).filter((w) => w.totals.session_count > 0).length;
   const activeGoals = editGoals ??
     savedGoals ?? {
       sessions_per_week: 0,
@@ -47,10 +52,11 @@ function DashboardPage() {
       km_per_week: 0,
     };
 
-  const avgSessionsPerWeek = weeksWithData > 0 ? (totals?.session_count ?? 0) / weeksWithData : 0;
+  const avgSessionsPerWeek =
+    weeksWithData > 0 ? (goalTotals?.session_count ?? 0) / weeksWithData : 0;
   const avgHoursPerWeek =
-    weeksWithData > 0 ? (totals?.total_seconds ?? 0) / 3600 / weeksWithData : 0;
-  const avgKmPerWeek = weeksWithData > 0 ? (totals?.total_distance_km ?? 0) / weeksWithData : 0;
+    weeksWithData > 0 ? (goalTotals?.total_seconds ?? 0) / 3600 / weeksWithData : 0;
+  const avgKmPerWeek = weeksWithData > 0 ? (goalTotals?.total_distance_km ?? 0) / weeksWithData : 0;
 
   const handleSaveGoals = async () => {
     if (!editGoals) return;
@@ -87,7 +93,13 @@ function DashboardPage() {
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
+          <PillToggle
+            value={activity}
+            options={["all", "running"]}
+            onChange={setActivity}
+            label={(a) => t(`dashboard.log.${a}`)}
+          />
           <ToggleGroup
             type="single"
             value={onlyDone ? "done" : "all"}
@@ -181,7 +193,7 @@ function DashboardPage() {
         </div>
       </div>
 
-      <TrainingLog username={username} year={year} onlyDone={onlyDone} />
+      <TrainingLog username={username} year={year} onlyDone={onlyDone} activity={activity} />
 
       {/* Weekly trend */}
       <WeeklyTrendChart weeks={weeks} />

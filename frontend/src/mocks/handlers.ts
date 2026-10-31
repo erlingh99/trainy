@@ -2,6 +2,7 @@
 // In-memory + localStorage-backed persistence under "mock-backend-v1".
 
 import { http, HttpResponse } from "msw";
+import { RUNNING_FORMS } from "@/lib/types";
 import type { Session, User, Goals } from "@/lib/types";
 
 const STORAGE_KEY = "mock-backend-v1";
@@ -138,10 +139,15 @@ function monthRange(yyyymm: string): [string, string] {
   return [start, endDate.toISOString().slice(0, 10)];
 }
 
-function aggregate(sessions: Session[]) {
+function aggregate(sessions: Session[], running = false) {
+  if (running) {
+    sessions = sessions
+      .map((s) => ({ ...s, parts: s.parts.filter((p) => RUNNING_FORMS.has(p.form ?? "")) }))
+      .filter((s) => s.parts.length > 0);
+  }
   const allParts = sessions.flatMap((s) => s.parts);
   const total_seconds = allParts.reduce((a, p) => a + (p.duration_seconds || 0), 0);
-  const runningParts = allParts.filter((p) => p.form === "running" || p.form === "orienteering");
+  const runningParts = allParts.filter((p) => RUNNING_FORMS.has(p.form ?? ""));
   const total_distance = runningParts.reduce((a, p) => a + (p.distance_km || 0), 0);
   const quality = sessions.filter((s) =>
     s.parts.some((p) => QUALITY_INTENSITIES.has(p.intensity || "") || p.competition),
@@ -402,6 +408,7 @@ export const handlers = [
     const u = resolveUserByName(store, userName);
     if (!u) return HttpResponse.json({ detail: `Unknown user: ${userName}` }, { status: 404 });
     const statusFilter = url.searchParams.get("status");
+    const running = url.searchParams.get("running") === "true";
     const allSessions = store.sessions
       .filter((s) => s.user_id === u.id && s.date >= from && s.date <= to)
       .filter((s) => !statusFilter || s.status === statusFilter)
@@ -415,10 +422,15 @@ export const handlers = [
       const clippedEnd = wkEnd > to ? to : wkEnd;
       const isoWeek = toIsoWeekLabel(cur);
       const wkSessions = allSessions.filter((s) => s.date >= cur && s.date <= clippedEnd);
-      weeks.push({ iso_week: isoWeek, start: cur, end: clippedEnd, totals: aggregate(wkSessions) });
+      weeks.push({
+        iso_week: isoWeek,
+        start: cur,
+        end: clippedEnd,
+        totals: aggregate(wkSessions, running),
+      });
       cur = addDays(clippedEnd, 1);
     }
-    return HttpResponse.json({ from, to, weeks, totals: aggregate(allSessions) });
+    return HttpResponse.json({ from, to, weeks, totals: aggregate(allSessions, running) });
   }),
   http.get("/api/summary/week", ({ request }) => {
     const url = new URL(request.url);

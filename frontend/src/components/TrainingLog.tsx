@@ -13,7 +13,7 @@ import type { Session } from "@/lib/types";
 const MIXED_COLOR = "#eab308";
 
 type Metric = "km" | "hours";
-type Activity = "all" | "running";
+export type Activity = "all" | "running";
 
 type DayVolume = { seconds: number; km: number; forms: Set<string> };
 
@@ -63,14 +63,15 @@ export function TrainingLog({
   username,
   year,
   onlyDone,
+  activity,
 }: {
   username: string;
   year: string;
   onlyDone: boolean;
+  activity: Activity;
 }) {
   const { t } = useTranslation();
   const [metric, setMetric] = useState<Metric>("km");
-  const [activity, setActivity] = useState<Activity>("all");
   const [visible, setVisible] = useState(PAGE_SIZE);
 
   const today = new Date();
@@ -108,20 +109,12 @@ export function TrainingLog({
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {t("dashboard.log.title")}
         </p>
-        <div className="flex flex-wrap justify-end gap-2">
-          <PillToggle
-            value={activity}
-            options={["all", "running"]}
-            onChange={setActivity}
-            label={(a) => t(`dashboard.log.${a}`)}
-          />
-          <PillToggle
-            value={metric}
-            options={["km", "hours"]}
-            onChange={setMetric}
-            label={(m) => t(`dashboard.log.${m}`)}
-          />
-        </div>
+        <PillToggle
+          value={metric}
+          options={["km", "hours"]}
+          onChange={setMetric}
+          label={(m) => t(`dashboard.log.${m}`)}
+        />
       </div>
 
       <div className="grid grid-cols-[minmax(72px,auto)_repeat(7,minmax(0,1fr))] items-center gap-x-1">
@@ -240,7 +233,7 @@ function Bubble({
   );
 }
 
-function PillToggle<T extends string>({
+export function PillToggle<T extends string>({
   value,
   options,
   onChange,

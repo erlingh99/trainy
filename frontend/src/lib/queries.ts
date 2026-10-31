@@ -80,12 +80,18 @@ export const sessionSearchQuery = (user: string, filters: SessionSearchFilters) 
     enabled: Boolean(user),
   });
 
-export const seasonSummaryQuery = (user: string, from: string, to: string, onlyDone = false) =>
+export const seasonSummaryQuery = (
+  user: string,
+  from: string,
+  to: string,
+  onlyDone = false,
+  running = false,
+) =>
   queryOptions({
-    queryKey: ["summary", "season", user, from, to, onlyDone],
+    queryKey: ["summary", "season", user, from, to, onlyDone, running],
     queryFn: () =>
       api<SeasonSummary>(
-        `/api/summary/season?user=${encodeURIComponent(user)}&from=${from}&to=${to}${onlyDone ? "&status=done" : ""}`,
+        `/api/summary/season?user=${encodeURIComponent(user)}&from=${from}&to=${to}${onlyDone ? "&status=done" : ""}${running ? "&running=true" : ""}`,
       ),
     enabled: Boolean(user && from && to),
   });

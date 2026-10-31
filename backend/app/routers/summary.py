@@ -50,18 +50,22 @@ def _month_range(yyyymm: str) -> tuple[date, date]:
 RUNNING_FORMS = {"running", "orienteering"}
 
 
-def _aggregate(sessions: Sequence[Session]) -> dict:
-    counted = list(sessions)
-    all_parts = [p for s in counted for p in (s.parts or [])]
+def _aggregate(sessions: Sequence[Session], forms: set[str] | None = None) -> dict:
+    per_session = [
+        [p for p in s.parts or [] if forms is None or p.get("form") in forms]
+        for s in sessions
+    ]
+    counted = [parts for parts in per_session if parts or forms is None]
+    all_parts = [p for parts in counted for p in parts]
     total_seconds = sum(p.get("duration_seconds") or 0 for p in all_parts)
     running_parts = [p for p in all_parts if p.get("form") in RUNNING_FORMS]
     total_distance = sum(p.get("distance_km") or 0.0 for p in running_parts)
     quality = sum(
         1
-        for s in counted
+        for parts in counted
         if any(
             (p.get("intensity") or "") in QUALITY_INTENSITIES or p.get("competition")
-            for p in (s.parts or [])
+            for p in parts
         )
     )
     by_form: Counter[str] = Counter(p["form"] for p in all_parts if p.get("form"))
@@ -88,7 +92,9 @@ async def season_summary(
     from_date: str = Query(..., alias="from"),
     to_date: str = Query(..., alias="to"),
     status: str | None = Query(None),
+    running: bool = Query(False),
 ):
+    forms = RUNNING_FORMS if running else None
     try:
         from_d = date.fromisoformat(from_date)
         to_d = date.fromisoformat(to_date)
@@ -116,7 +122,7 @@ async def season_summary(
                 "iso_week": iso_week,
                 "start": cur.isoformat(),
                 "end": wk_end.isoformat(),
-                "totals": _aggregate(wk_sessions),
+                "totals": _aggregate(wk_sessions, forms),
             }
         )
         cur = wk_end + timedelta(days=1)
@@ -125,7 +131,7 @@ async def season_summary(
         "from": from_date,
         "to": to_date,
         "weeks": weeks,
-        "totals": _aggregate(all_sessions),
+        "totals": _aggregate(all_sessions, forms),
     }
 
 
