@@ -180,7 +180,14 @@
       "km": "Km"
     },
     "character": "Passkaraktärsfördelning",
-    "monthly": "Månadsöversikt"
+    "monthly": "Månadsöversikt",
+    "log": {
+      "title": "Träningslogg",
+      "km": "Km",
+      "hours": "Timmar",
+      "mixed": "Flera aktiviteter",
+      "showMore": "Visa fler veckor"
+    }
   },
   "garmin": {
     "title": "Garmin Connect",

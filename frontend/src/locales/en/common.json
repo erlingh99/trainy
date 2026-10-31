@@ -180,7 +180,14 @@
       "km": "Km"
     },
     "character": "Character distribution",
-    "monthly": "Monthly comparison"
+    "monthly": "Monthly comparison",
+    "log": {
+      "title": "Training log",
+      "km": "Km",
+      "hours": "Hours",
+      "mixed": "Multiple activities",
+      "showMore": "Show more weeks"
+    }
   },
   "garmin": {
     "title": "Garmin Connect",

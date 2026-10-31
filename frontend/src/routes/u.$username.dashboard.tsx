@@ -9,6 +9,7 @@ import {
   MonthlyComparisonChart,
   FormDistributionChart,
 } from "@/components/TrainingCharts";
+import { TrainingLog } from "@/components/TrainingLog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -179,6 +180,8 @@ function DashboardPage() {
           />
         </div>
       </div>
+
+      <TrainingLog username={username} year={year} onlyDone={onlyDone} />
 
       {/* Weekly trend */}
       <WeeklyTrendChart weeks={weeks} />
