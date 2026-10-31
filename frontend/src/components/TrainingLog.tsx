@@ -19,6 +19,7 @@ type DayVolume = { seconds: number; km: number; forms: Set<string> };
 const PAGE_SIZE = 8;
 const MAX_BUBBLE = 44;
 const MIN_BUBBLE = 8;
+const MIN_LABEL_INSIDE = 26;
 
 function aggregateByDay(sessions: Session[]): Map<string, DayVolume> {
   const byDay = new Map<string, DayVolume>();
@@ -43,6 +44,12 @@ function dayColor(forms: Set<string>): string {
 function bubbleSize(value: number, max: number): number {
   if (max <= 0 || value <= 0) return MIN_BUBBLE;
   return Math.max(MIN_BUBBLE, Math.sqrt(value / max) * MAX_BUBBLE);
+}
+
+function bubbleLabel(metric: Metric, d: DayVolume): string {
+  if (metric === "hours") return secondsToHmm(d.seconds);
+  if (d.km <= 0) return "";
+  return String(d.km >= 10 ? Math.round(d.km) : Math.round(d.km * 10) / 10);
 }
 
 function formatValue(metric: Metric, v: { seconds: number; km: number }): string {
@@ -152,14 +159,11 @@ export function TrainingLog({
                 return (
                   <div key={date} className="flex h-14 items-center justify-center border-t">
                     {d && (
-                      <div
-                        className="rounded-full transition-all"
-                        title={`${date}: ${Array.from(d.forms, (f) => t(`form.${f}`)).join(", ")} · ${formatValue(metric, d)}`}
-                        style={{
-                          width: bubbleSize(value(d), max),
-                          height: bubbleSize(value(d), max),
-                          backgroundColor: dayColor(d.forms),
-                        }}
+                      <Bubble
+                        day={d}
+                        date={date}
+                        metric={metric}
+                        size={bubbleSize(value(d), max)}
                       />
                     )}
                   </div>
@@ -196,5 +200,40 @@ function LegendItem({ color, label }: { color: string; label: string }) {
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
+  );
+}
+
+function Bubble({
+  day,
+  date,
+  metric,
+  size,
+}: {
+  day: DayVolume;
+  date: string;
+  metric: Metric;
+  size: number;
+}) {
+  const { t } = useTranslation();
+  const label = bubbleLabel(metric, day);
+  const inside = size >= MIN_LABEL_INSIDE;
+  return (
+    <div
+      className="relative flex items-center justify-center rounded-full transition-all"
+      title={`${date}: ${Array.from(day.forms, (f) => t(`form.${f}`)).join(", ")} · ${formatValue(metric, day)}`}
+      style={{ width: size, height: size, backgroundColor: dayColor(day.forms) }}
+    >
+      {label && (
+        <span
+          className={
+            inside
+              ? "text-[10px] font-semibold tabular-nums leading-none text-white [text-shadow:0_0_2px_rgba(0,0,0,0.45)]"
+              : "absolute top-full mt-0.5 text-[9px] tabular-nums leading-none text-muted-foreground"
+          }
+        >
+          {label}
+        </span>
+      )}
+    </div>
   );
 }
