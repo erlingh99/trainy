@@ -91,6 +91,7 @@ class ActivityProposal:
     duration_seconds: int
     distance_km: float | None
     activity_name: str | None
+    description: str | None
     match_status: Literal["matched", "ambiguous", "unmatched", "already_done"]
     matched_session_id: str | None
     candidate_sessions: list[CandidateSession]
@@ -123,6 +124,10 @@ def make_session_name(activity: dict) -> str | None:
     if name.lower() == generic:
         return None
     return name
+
+
+def activity_description(activity: dict) -> str | None:
+    return (activity.get("description") or "").strip() or None
 
 
 def _detect_form(activity: dict) -> str | None:
@@ -221,6 +226,7 @@ def _map_one(
         else None
     )
     name = make_session_name(activity)
+    description = activity_description(activity)
     activity_id = int(activity.get("activityId") or 0)
     surface = _infer_surface(type_key) if form == "running" else None
 
@@ -243,6 +249,7 @@ def _map_one(
             duration_seconds=duration,
             distance_km=dist,
             activity_name=name,
+            description=description,
             match_status="already_done",
             matched_session_id=done_session.id,
             candidate_sessions=[
@@ -293,6 +300,7 @@ def _map_one(
         duration_seconds=duration,
         distance_km=dist,
         activity_name=name,
+        description=description,
         match_status=status,
         matched_session_id=matched_id,
         candidate_sessions=candidate_details,

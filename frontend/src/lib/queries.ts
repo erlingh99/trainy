@@ -168,6 +168,7 @@ export function garminSyncApply(
     duration_seconds: number;
     distance_km: number | null;
     activity_name: string | null;
+    description: string | null;
     action: "match" | "create" | "skip";
     session_id?: string;
   }>,
