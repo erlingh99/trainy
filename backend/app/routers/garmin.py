@@ -73,6 +73,7 @@ class ActivityProposalOut(BaseModel):
     duration_seconds: int
     distance_km: float | None = None
     activity_name: str | None = None
+    description: str | None = None
     match_status: str
     matched_session_id: str | None = None
     candidate_sessions: list[CandidateSessionOut]
@@ -87,6 +88,7 @@ class ApplyItem(BaseModel):
     duration_seconds: int
     distance_km: float | None = None
     activity_name: str | None = None
+    description: str | None = None
     action: Literal["match", "create", "skip"]
     session_id: str | None = None
 
@@ -149,6 +151,7 @@ def _proposal_to_out(p: ActivityProposal) -> ActivityProposalOut:
         duration_seconds=p.duration_seconds,
         distance_km=p.distance_km,
         activity_name=p.activity_name,
+        description=p.description,
         match_status=p.match_status,
         matched_session_id=p.matched_session_id,
         candidate_sessions=[
@@ -393,6 +396,8 @@ async def sync_apply(
                 s.status = SessionStatus.done
                 if s.name is None and item.activity_name:
                     s.name = item.activity_name
+                if not s.comment and item.description:
+                    s.comment = item.description
                 s.updated_at = datetime.now(UTC)
                 db.add(s)
                 matched_session_ids.add(item.session_id)
@@ -427,6 +432,7 @@ async def sync_apply(
                     date=item.date,
                     session_no=next_no,
                     name=item.activity_name,
+                    comment=item.description,
                     parts=[part],
                     status=SessionStatus.done,
                 )

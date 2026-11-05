@@ -68,6 +68,7 @@ def client(db_path, seed):
     async def override():
         async with maker() as s:
             yield s
+            await s.commit()
 
     app.dependency_overrides[get_session] = override
     # No lifespan: alembic would run against the configured production path.

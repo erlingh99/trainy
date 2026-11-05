@@ -164,6 +164,7 @@ export function GarminSyncModal({
       duration_seconds: it.proposal.duration_seconds,
       distance_km: it.proposal.distance_km,
       activity_name: it.proposal.activity_name,
+      description: it.proposal.description,
       action: it.action,
       session_id: it.action === "match" ? (it.session_id ?? undefined) : undefined,
     }));
