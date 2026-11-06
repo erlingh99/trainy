@@ -22,9 +22,8 @@ def _add_creds(db_path):
     with engine.begin() as conn:
         conn.execute(
             sa.text(
-                "INSERT INTO garmin_credentials (user_id, garmin_username, garmin_password,"
-                " mfa_pending, created_at, updated_at)"
-                " VALUES ('u1', 'g', 'x', 0, '2026-01-01', '2026-01-01')"
+                "INSERT INTO garmin_credentials (user_id, api_key, created_at, updated_at)"
+                " VALUES ('u1', 'x', '2026-01-01', '2026-01-01')"
             )
         )
     engine.dispose()

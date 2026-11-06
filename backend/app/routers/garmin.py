@@ -21,13 +21,9 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..dependencies import DbSession
-from ..garmin.client import (
-    GarminAuthError,
-    GarminClient,
-    GarminRateLimitError,
-    TokenCache,
-)
-from ..garmin.crypto import decrypt_password, encrypt_password
+from ..garmin import client as garmin_client
+from ..garmin.client import GarminAuthError, GarminRateLimitError
+from ..garmin.crypto import decrypt_secret, encrypt_secret
 from ..garmin.mapper import ActivityProposal, map_activities
 from ..models.models import GarminCredentials, Session, SessionStatus, User
 
@@ -38,20 +34,15 @@ router = APIRouter(prefix="/api/garmin", tags=["garmin"])
 
 
 class GarminConnectRequest(BaseModel):
-    garmin_username: str
-    garmin_password: str
-
-
-class GarminMfaRequest(BaseModel):
-    mfa_code: str
+    api_key: str
+    api_key_expires_on: date | None = None
 
 
 class GarminStatusResponse(BaseModel):
     connected: bool
-    garmin_username: str | None = None
+    api_key_expires_on: date | None = None
     last_sync_at: str | None = None
     last_sync_error: str | None = None
-    mfa_pending: bool = False
 
 
 class SyncPreviewRequest(BaseModel):
@@ -122,26 +113,6 @@ async def _get_creds(db: DbSession, user_id: str) -> GarminCredentials:
     return creds
 
 
-def _creds_to_cache(creds: GarminCredentials) -> TokenCache:
-    return TokenCache(
-        di_token=creds.di_token,
-        di_refresh_token=creds.di_refresh_token,
-        di_client_id=creds.di_client_id,
-        token_expires_at=creds.token_expires_at.isoformat()
-        if creds.token_expires_at
-        else None,
-    )
-
-
-def _apply_cache_to_creds(cache: TokenCache, creds: GarminCredentials) -> None:
-    creds.di_token = cache.get("di_token")
-    creds.di_refresh_token = cache.get("di_refresh_token")
-    creds.di_client_id = cache.get("di_client_id")
-    raw = cache.get("token_expires_at")
-    creds.token_expires_at = datetime.fromisoformat(raw) if raw else None
-    creds.updated_at = datetime.now(UTC)
-
-
 def _proposal_to_out(p: ActivityProposal) -> ActivityProposalOut:
     return ActivityProposalOut(
         garmin_activity_id=p.garmin_activity_id,
@@ -178,78 +149,27 @@ async def connect_garmin(
     db: DbSession,
     payload: GarminConnectRequest,
     user: str = Query(...),
-):
-    """Store credentials and initiate login. Returns 202 if MFA is required."""
+) -> GarminStatusResponse:
+    """Verify a Personal API key with Garmin and store it encrypted."""
     u = await _resolve_user(db, user)
-    # Encrypt up front so a missing GARMIN_SECRET_KEY fails before the slow login.
-    encrypted_password = encrypt_password(payload.garmin_password)
+    api_key = payload.api_key.strip()
+    if not api_key:
+        raise HTTPException(422, "API key must not be empty")
+    encrypted_key = encrypt_secret(api_key)
 
-    # Log in before writing anything: login takes 30-45s+ (Cloudflare delay plus
-    # fallback strategies), and a flushed write would hold SQLite's write lock for
-    # that whole time, failing every other write with "database is locked".
-    client = GarminClient(
-        payload.garmin_username, payload.garmin_password
-    )  # use plaintext from request, not from DB
     try:
-        cache, mfa_required = await asyncio.to_thread(client.login)
+        await asyncio.to_thread(garmin_client.verify_api_key, api_key, u.id)
     except Exception as e:
         raise _garmin_error_to_http(e) from e
 
     creds = await db.get(GarminCredentials, u.id)
     now = datetime.now(UTC)
     if creds is None:
-        creds = GarminCredentials(
-            user_id=u.id,
-            garmin_username=payload.garmin_username,
-            garmin_password=encrypted_password,
-            created_at=now,
-            updated_at=now,
-        )
-    else:
-        creds.garmin_username = payload.garmin_username
-        creds.garmin_password = encrypted_password
-        creds.updated_at = now
-
-    if mfa_required:
-        creds.mfa_pending = True
-        creds.mfa_state = client.pending_mfa_state
-        db.add(creds)
-        from fastapi.responses import JSONResponse
-
-        return JSONResponse(status_code=202, content={"mfa_required": True})
-
-    _apply_cache_to_creds(cache, creds)
-    creds.mfa_pending = False
-    creds.mfa_state = None
-    db.add(creds)
-    return _build_status(creds)
-
-
-@router.post("/mfa")
-async def complete_mfa(
-    db: DbSession,
-    payload: GarminMfaRequest,
-    user: str = Query(...),
-):
-    u = await _resolve_user(db, user)
-    creds = await _get_creds(db, u.id)
-
-    if not creds.mfa_pending or not creds.mfa_state:
-        raise HTTPException(400, "No pending MFA challenge — connect first")
-
-    client = GarminClient(
-        creds.garmin_username, decrypt_password(creds.garmin_password)
-    )
-    try:
-        cache = await asyncio.to_thread(
-            client.resume_mfa, creds.mfa_state, payload.mfa_code
-        )
-    except Exception as e:
-        raise _garmin_error_to_http(e) from e
-
-    _apply_cache_to_creds(cache, creds)
-    creds.mfa_pending = False
-    creds.mfa_state = None
+        creds = GarminCredentials(user_id=u.id, api_key=encrypted_key, created_at=now)
+    creds.api_key = encrypted_key
+    creds.api_key_expires_on = payload.api_key_expires_on
+    creds.last_sync_error = None
+    creds.updated_at = now
     db.add(creds)
     return _build_status(creds)
 
@@ -275,6 +195,7 @@ async def disconnect_garmin(
     creds = await db.get(GarminCredentials, u.id)
     if creds:
         await db.delete(creds)
+    garmin_client.token_cache_file(u.id).unlink(missing_ok=True)
 
 
 @router.post("/sync/preview")
@@ -290,29 +211,16 @@ async def sync_preview(
     u = await _resolve_user(db, user)
     creds = await _get_creds(db, u.id)
 
-    if creds.mfa_pending:
-        raise HTTPException(
-            400, "MFA verification pending — complete via /api/garmin/mfa first"
-        )
-    if not creds.di_token:
-        raise HTTPException(
-            400, "Not authenticated with Garmin — reconnect via /api/garmin/connect"
-        )
-
-    client = GarminClient(
-        creds.garmin_username, decrypt_password(creds.garmin_password)
-    )
-    cache = _creds_to_cache(creds)
-
     try:
-        activities, updated_cache = await asyncio.to_thread(
-            client.get_activities, cache, payload.start_date, payload.end_date
+        activities = await asyncio.to_thread(
+            garmin_client.get_activities,
+            decrypt_secret(creds.api_key),
+            u.id,
+            payload.start_date,
+            payload.end_date,
         )
     except Exception as e:
         raise _garmin_error_to_http(e) from e
-
-    _apply_cache_to_creds(updated_cache, creds)
-    db.add(creds)
 
     # Load planned and done sessions in the range for matching
     result = await db.exec(
@@ -452,9 +360,8 @@ async def sync_apply(
 
 def _build_status(creds: GarminCredentials) -> GarminStatusResponse:
     return GarminStatusResponse(
-        connected=bool(creds.di_token and not creds.mfa_pending),
-        garmin_username=creds.garmin_username,
+        connected=True,
+        api_key_expires_on=creds.api_key_expires_on,
         last_sync_at=creds.last_sync_at.isoformat() if creds.last_sync_at else None,
         last_sync_error=creds.last_sync_error,
-        mfa_pending=creds.mfa_pending,
     )

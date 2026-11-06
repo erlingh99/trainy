@@ -272,14 +272,8 @@ class SessionReorder(SQLModel):
 class GarminCredentials(SQLModel, table=True):
     __tablename__ = "garmin_credentials"
     user_id: str = Field(primary_key=True, foreign_key="users.id")
-    garmin_username: str
-    garmin_password: str
-    di_token: str | None = None
-    di_refresh_token: str | None = None
-    di_client_id: str | None = None
-    token_expires_at: datetime | None = None
-    mfa_pending: bool = False
-    mfa_state: str | None = None
+    api_key: str
+    api_key_expires_on: _Date | None = None
     last_sync_at: datetime | None = None
     last_sync_error: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

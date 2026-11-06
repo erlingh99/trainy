@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { garminStatusQuery, garminConnect, garminMfa, garminDisconnect } from "@/lib/queries";
+import { garminStatusQuery, garminConnect, garminDisconnect } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
 import { DuplicatesModal } from "./DuplicatesModal";
 import { GarminSyncModal } from "./GarminSyncModal";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
   Loader2,
   RefreshCw,
   Unplug,
@@ -19,8 +21,18 @@ import {
 
 type Props = { username: string; defaultOpen?: boolean };
 
+const GARMIN_KEY_URL = "https://connect.garmin.com/app/settings/personalApiToken";
+const EXPIRY_WARNING_DAYS = 14;
+
 function localDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function daysUntil(isoDate: string): number {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((new Date(y, m - 1, d).getTime() - start.getTime()) / 86_400_000);
 }
 
 export function GarminSection({ username, defaultOpen = false }: Props) {
@@ -28,13 +40,11 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(defaultOpen);
   const { data: status } = useQuery({ ...garminStatusQuery(username), enabled: open });
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mfaCode, setMfaCode] = useState("");
-  const [mfaRequired, setMfaRequired] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
+  const [replacing, setReplacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState(false);
-  const [connectingSeconds, setConnectingSeconds] = useState(0);
 
   // Bulk import state
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -75,39 +85,18 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
 
   const connect = useMutation({
     mutationFn: () =>
-      garminConnect(username, { garmin_username: email, garmin_password: password }),
-    onSuccess: (data: unknown) => {
-      const res = data as { mfa_required?: boolean } | undefined;
-      if (res?.mfa_required) {
-        setMfaRequired(true);
-        setError(null);
-      } else {
-        setMfaRequired(false);
-        setEmail("");
-        setPassword("");
-        setError(null);
-        setJustConnected(true);
-        setTimeout(() => setJustConnected(false), 4000);
-        invalidate();
-      }
-    },
-    onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "Connection failed");
-    },
-  });
-
-  const mfa = useMutation({
-    mutationFn: () => garminMfa(username, mfaCode),
+      garminConnect(username, { api_key: apiKey.trim(), api_key_expires_on: expiresOn || null }),
     onSuccess: () => {
-      setMfaRequired(false);
-      setMfaCode("");
+      setApiKey("");
+      setExpiresOn("");
+      setReplacing(false);
       setError(null);
       setJustConnected(true);
       setTimeout(() => setJustConnected(false), 4000);
       invalidate();
     },
     onError: (e) => {
-      setError(e instanceof ApiError ? e.message : "MFA verification failed");
+      setError(e instanceof ApiError ? e.message : "Connection failed");
     },
   });
 
@@ -116,18 +105,81 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
     onSuccess: () => invalidate(),
   });
 
-  // Elapsed-time counter while connecting (connection takes 30–45 s)
-  useEffect(() => {
-    if (!connect.isPending) return;
-    const id = setInterval(() => setConnectingSeconds((s) => s + 1), 1000);
-    return () => {
-      clearInterval(id);
-      setConnectingSeconds(0);
-    };
-  }, [connect.isPending]);
-
   const connected = status?.connected ?? false;
-  const pendingMfa = status?.mfa_pending ?? false;
+  const daysLeft = status?.api_key_expires_on ? daysUntil(status.api_key_expires_on) : null;
+  const keyExpired = daysLeft !== null && daysLeft < 0;
+
+  const keyForm = (
+    <form
+      className="space-y-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (apiKey.trim()) connect.mutate();
+      }}
+    >
+      <a
+        href={GARMIN_KEY_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+      >
+        {t("garmin.createKeyLink")}
+        <ExternalLink className="h-3 w-3" />
+      </a>
+      <Input
+        type="password"
+        placeholder={t("garmin.apiKeyPlaceholder")}
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        className="h-8 text-sm"
+        autoComplete="off"
+      />
+      <div>
+        <label className="text-[10px] text-muted-foreground">{t("garmin.expiresOnLabel")}</label>
+        <Input
+          type="date"
+          className="h-7 text-xs"
+          value={expiresOn}
+          onChange={(e) => setExpiresOn(e.target.value)}
+        />
+      </div>
+      {error && (
+        <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+      <div className="flex gap-1.5">
+        {replacing && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 flex-1"
+            onClick={() => {
+              setReplacing(false);
+              setError(null);
+            }}
+          >
+            {t("garmin.cancel")}
+          </Button>
+        )}
+        <Button
+          type="submit"
+          size="sm"
+          className="h-8 flex-1 gap-1.5"
+          disabled={!apiKey.trim() || connect.isPending}
+        >
+          {connect.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {connect.isPending
+            ? t("garmin.verifyingKey")
+            : replacing
+              ? t("garmin.replaceKey")
+              : t("garmin.connect")}
+        </Button>
+      </div>
+      <p className="text-[10px] text-muted-foreground">{t("garmin.keyHint")}</p>
+    </form>
+  );
 
   return (
     <div className="border-t pt-2 mt-1">
@@ -138,14 +190,14 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
       >
         <Watch className="h-3.5 w-3.5" />
         <span>{t("garmin.title")}</span>
-        {connected && (
+        {connected && !keyExpired && (
           <span className="ml-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
             {t("garmin.connected")}
           </span>
         )}
-        {pendingMfa && (
+        {keyExpired && (
           <span className="ml-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600">
-            {t("garmin.mfaPending")}
+            {t("garmin.keyExpired")}
           </span>
         )}
         {open ? (
@@ -166,10 +218,22 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                   {t("garmin.successConnected")}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">
-                {t("garmin.signedInAs")}{" "}
-                <span className="font-medium text-foreground">{status?.garmin_username}</span>
-              </p>
+              {daysLeft !== null && daysLeft <= EXPIRY_WARNING_DAYS ? (
+                <div className="flex items-start gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {keyExpired
+                    ? t("garmin.keyExpiredMessage")
+                    : t("garmin.keyExpiringSoon", { count: daysLeft })}
+                </div>
+              ) : (
+                status?.api_key_expires_on && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("garmin.keyExpiresOn", {
+                      date: new Date(`${status.api_key_expires_on}T00:00`).toLocaleDateString(),
+                    })}
+                  </p>
+                )
+              )}
               {status?.last_sync_at && (
                 <p className="text-xs text-muted-foreground">
                   {t("garmin.lastSync", { time: new Date(status.last_sync_at).toLocaleString() })}
@@ -305,6 +369,19 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                 )}
               </div>
 
+              {replacing ? (
+                <div className="rounded-md border bg-muted/30 p-2">{keyForm}</div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-full text-xs"
+                  onClick={() => setReplacing(true)}
+                >
+                  {t("garmin.replaceKey")}
+                </Button>
+              )}
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -320,84 +397,8 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                 {t("garmin.disconnect")}
               </Button>
             </div>
-          ) : connect.isPending ? (
-            /* Connecting loading state */
-            <div className="flex flex-col items-center gap-2 py-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <p className="text-xs font-medium">{t("garmin.connectingTo")}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {t("garmin.connectingSeconds", { seconds: connectingSeconds })}
-              </p>
-            </div>
-          ) : pendingMfa || mfaRequired ? (
-            /* MFA state */
-            <form
-              className="space-y-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (mfaCode) mfa.mutate();
-              }}
-            >
-              <p className="text-xs text-muted-foreground">{t("garmin.mfaInstructions")}</p>
-              <Input
-                placeholder={t("garmin.mfaPlaceholder")}
-                value={mfaCode}
-                onChange={(e) => setMfaCode(e.target.value)}
-                maxLength={6}
-                className="h-8 text-sm"
-                autoComplete="one-time-code"
-                autoFocus
-              />
-              {error && (
-                <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {error}
-                </div>
-              )}
-              <Button
-                type="submit"
-                size="sm"
-                className="h-8 w-full gap-1.5"
-                disabled={!mfaCode || mfa.isPending}
-              >
-                {mfa.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {mfa.isPending ? t("garmin.verifying") : t("garmin.verify")}
-              </Button>
-            </form>
           ) : (
-            /* Not connected state */
-            <form
-              className="space-y-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (email && password) connect.mutate();
-              }}
-            >
-              <Input
-                type="email"
-                placeholder={t("garmin.emailPlaceholder")}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-8 text-sm"
-                autoComplete="username"
-              />
-              <Input
-                type="password"
-                placeholder={t("garmin.passwordPlaceholder")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-8 text-sm"
-                autoComplete="current-password"
-              />
-              {error && (
-                <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {error}
-                </div>
-              )}
-              <Button type="submit" size="sm" className="h-8 w-full" disabled={!email || !password}>
-                {t("garmin.connect")}
-              </Button>
-              <p className="text-[10px] text-muted-foreground">{t("garmin.loginHint")}</p>
-            </form>
+            keyForm
           )}
         </div>
       )}

@@ -1,4 +1,4 @@
-"""Covers 4d9b2c5e8f31, which rewrites rows and cannot be rolled back."""
+"""Covers data migrations: 4d9b2c5e8f31 (rewrites rows) and 5e1c7a9b3d20 (drops rows)."""
 
 import json
 from pathlib import Path
@@ -108,3 +108,29 @@ def test_migrations_run_from_empty(alembic_cfg, engine):
     """Guards the path a fresh deploy takes on startup."""
     command.upgrade(alembic_cfg, "head")
     assert {"users", "sessions"} <= set(sa.inspect(engine).get_table_names())
+
+
+def test_garmin_password_credentials_are_dropped_for_api_keys(alembic_cfg, engine):
+    command.upgrade(alembic_cfg, "4d9b2c5e8f31")
+    with engine.begin() as c:
+        c.execute(
+            sa.text(
+                "INSERT INTO users (id, name, created_at) VALUES ('u1','e','2026-01-01')"
+            )
+        )
+        c.execute(
+            sa.text(
+                "INSERT INTO garmin_credentials (user_id, garmin_username, garmin_password,"
+                " mfa_pending, created_at, updated_at)"
+                " VALUES ('u1','g','x',0,'2026-01-01','2026-01-01')"
+            )
+        )
+    command.upgrade(alembic_cfg, "head")
+    columns = {c["name"] for c in sa.inspect(engine).get_columns("garmin_credentials")}
+    assert {"api_key", "api_key_expires_on"} <= columns
+    assert "garmin_password" not in columns
+    with engine.begin() as c:
+        assert (
+            c.execute(sa.text("SELECT COUNT(*) FROM garmin_credentials")).scalar() == 0
+        )
+    command.downgrade(alembic_cfg, "4d9b2c5e8f31")
