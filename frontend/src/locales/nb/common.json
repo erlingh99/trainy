@@ -232,6 +232,7 @@
     "createKeyLink": "Opprett en personlig API-nøkkel i Garmin Connect",
     "keyHint": "Nøkkelen vises bare én gang — lim den inn her rett etter at du har opprettet den.",
     "keyExpiresOn": "API-nøkkelen utløper {{date}}",
+    "keyExpiresToday": "API-nøkkelen utløper i dag — opprett en ny og bytt den ut.",
     "keyExpiringSoon_one": "API-nøkkelen utløper om {{count}} dag — opprett en ny og bytt den ut.",
     "keyExpiringSoon_other": "API-nøkkelen utløper om {{count}} dager — opprett en ny og bytt den ut.",
     "keyExpiredMessage": "API-nøkkelen har utløpt — opprett en ny og bytt den ut.",

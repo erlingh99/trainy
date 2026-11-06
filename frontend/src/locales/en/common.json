@@ -232,6 +232,7 @@
     "createKeyLink": "Create a Personal API key in Garmin Connect",
     "keyHint": "The key is shown only once — paste it here right after creating it.",
     "keyExpiresOn": "API key expires {{date}}",
+    "keyExpiresToday": "API key expires today — create a new one and replace it.",
     "keyExpiringSoon_one": "API key expires in {{count}} day — create a new one and replace it.",
     "keyExpiringSoon_other": "API key expires in {{count}} days — create a new one and replace it.",
     "keyExpiredMessage": "API key has expired — create a new one and replace it.",

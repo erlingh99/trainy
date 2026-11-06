@@ -223,7 +223,9 @@ export function GarminSection({ username, defaultOpen = false }: Props) {
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   {keyExpired
                     ? t("garmin.keyExpiredMessage")
-                    : t("garmin.keyExpiringSoon", { count: daysLeft })}
+                    : daysLeft === 0
+                      ? t("garmin.keyExpiresToday")
+                      : t("garmin.keyExpiringSoon", { count: daysLeft })}
                 </div>
               ) : (
                 status?.api_key_expires_on && (
