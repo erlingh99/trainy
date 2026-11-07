@@ -126,18 +126,11 @@ export const garminStatusQuery = (username: string) =>
 
 export function garminConnect(
   username: string,
-  body: { garmin_username: string; garmin_password: string },
-): Promise<unknown> {
-  return api(`/api/garmin/connect?user=${encodeURIComponent(username)}`, {
+  body: { api_key: string; api_key_expires_on: string | null },
+): Promise<GarminStatus> {
+  return api<GarminStatus>(`/api/garmin/connect?user=${encodeURIComponent(username)}`, {
     method: "POST",
     json: body,
-  });
-}
-
-export function garminMfa(username: string, mfa_code: string): Promise<unknown> {
-  return api(`/api/garmin/mfa?user=${encodeURIComponent(username)}`, {
-    method: "POST",
-    json: { mfa_code },
   });
 }
 

@@ -238,10 +238,9 @@ export type Goals = {
 
 export type GarminStatus = {
   connected: boolean;
-  garmin_username: string | null;
+  api_key_expires_on: string | null; // YYYY-MM-DD
   last_sync_at: string | null;
   last_sync_error: string | null;
-  mfa_pending: boolean;
 };
 
 export type GarminCandidateSession = {

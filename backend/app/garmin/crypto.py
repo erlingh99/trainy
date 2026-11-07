@@ -14,14 +14,14 @@ def _fernet() -> Fernet:
     return Fernet(key.encode())
 
 
-def encrypt_password(password: str) -> str:
-    return _fernet().encrypt(password.encode()).decode()
+def encrypt_secret(secret: str) -> str:
+    return _fernet().encrypt(secret.encode()).decode()
 
 
-def decrypt_password(ciphertext: str) -> str:
+def decrypt_secret(ciphertext: str) -> str:
     try:
         return _fernet().decrypt(ciphertext.encode()).decode()
     except (InvalidToken, Exception) as e:
         raise RuntimeError(
-            f"Failed to decrypt Garmin password — check that GARMIN_SECRET_KEY matches the key used when credentials were stored: {e}"
+            f"Failed to decrypt Garmin API key — check that GARMIN_SECRET_KEY matches the key used when it was stored: {e}"
         ) from e
