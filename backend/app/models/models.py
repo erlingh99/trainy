@@ -274,8 +274,6 @@ class GarminCredentials(SQLModel, table=True):
     user_id: str = Field(primary_key=True, foreign_key="users.id")
     api_key: str
     api_key_expires_on: _Date | None = None
-    bearer_token: str | None = None
-    bearer_token_expires_at: datetime | None = None
     last_sync_at: datetime | None = None
     last_sync_error: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

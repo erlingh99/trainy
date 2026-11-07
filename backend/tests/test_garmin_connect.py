@@ -1,7 +1,6 @@
 import base64
 import json
 import time
-from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -13,6 +12,7 @@ from garmin_personal_api import (
     PersonalApiAuthenticator,
 )
 
+from app.garmin import client as garmin_client
 from app.garmin.crypto import decrypt_secret
 
 from .helpers import USER
@@ -26,11 +26,9 @@ ACTIVITY = {
     "activityType": {"typeKey": "running"},
 }
 
-PREVIEW = {"start_date": "2026-07-01", "end_date": "2026-07-02"}
 
-
-def _jwt(n: int) -> str:
-    payload = base64.urlsafe_b64encode(json.dumps({"n": n}).encode()).decode()
+def _jwt(exp: float) -> str:
+    payload = base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode()
     return f"h.{payload.rstrip('=')}.s"
 
 
@@ -39,54 +37,27 @@ def _http_error(status: int) -> HttpError:
 
 
 @pytest.fixture(autouse=True)
-def secret_key(monkeypatch):
+def garmin_env(monkeypatch, tmp_path):
     monkeypatch.setenv("GARMIN_SECRET_KEY", Fernet.generate_key().decode())
-
-
-class Exchanges:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, bool]] = []
-        self.cache_files: list[Path] = []
-        self.lifetime = 86400.0
-
-    @property
-    def last_token(self) -> str:
-        return _jwt(len(self.calls))
+    monkeypatch.setattr(garmin_client, "GARMIN_TOKEN_CACHE_DIR", str(tmp_path))
 
 
 @pytest.fixture
-def exchanges(monkeypatch):
-    ex = Exchanges()
+def token_calls(monkeypatch):
+    calls: list[tuple[str, bool]] = []
 
     def fake_obtain_token(self, api_key, *, force_refresh=False):
-        ex.cache_files.append(self.bearer_token_cache_file)
         if api_key == "bad":
             raise HttpError(
                 status_code=401, method="POST", url="u", response_text="nope"
             )
-        ex.calls.append((api_key, force_refresh))
+        calls.append((api_key, force_refresh))
         return BearerToken(
-            access_token=ex.last_token, expires_at=time.time() + ex.lifetime
+            access_token=_jwt(time.time() + 86400), expires_at=time.time() + 86400
         )
 
     monkeypatch.setattr(PersonalApiAuthenticator, "obtain_token", fake_obtain_token)
-    return ex
-
-
-@pytest.fixture
-def searches(monkeypatch):
-    """Records the bearer token of each search; tests set `responses` per call."""
-    state: dict = {"tokens": [], "responses": []}
-
-    def fake_search(self, **kwargs):
-        state["tokens"].append(self._headers["Authorization"].removeprefix("Bearer "))
-        response = state["responses"].pop(0) if state["responses"] else [ACTIVITY]
-        if isinstance(response, Exception):
-            raise response
-        return response
-
-    monkeypatch.setattr(GarminPersonalApiClient, "search_activities", fake_search)
-    return state
+    return calls
 
 
 def _connect(client, api_key="key-123", **extra):
@@ -97,50 +68,33 @@ def _connect(client, api_key="key-123", **extra):
     )
 
 
-def _preview(client):
-    return client.post("/api/garmin/sync/preview", params={"user": USER}, json=PREVIEW)
-
-
-def _row(db_path) -> dict | None:
+def _stored_key(db_path) -> str:
     engine = sa.create_engine(f"sqlite:///{db_path}")
     with engine.connect() as conn:
-        row = (
-            conn.execute(sa.text("SELECT * FROM garmin_credentials")).mappings().first()
-        )
+        key = conn.execute(
+            sa.text("SELECT api_key FROM garmin_credentials")
+        ).scalar_one()
     engine.dispose()
-    return dict(row) if row else None
+    return key
 
 
-def _stored_token(db_path) -> str:
-    row = _row(db_path)
-    assert row is not None
-    return decrypt_secret(row["bearer_token"])
-
-
-def test_connect_stores_encrypted_key_and_token(client, db_path, seed, exchanges):
+def test_connect_verifies_and_encrypts_key(client, db_path, seed, token_calls):
     seed([])
     r = _connect(client, api_key="  key-123\n", api_key_expires_on="2027-11-06")
     assert r.status_code == 200, r.text
     assert r.json()["connected"] is True
     assert r.json()["api_key_expires_on"] == "2027-11-06"
-    assert exchanges.calls == [("key-123", True)]
+    assert token_calls == [("key-123", True)]
 
-    row = _row(db_path)
-    assert row is not None
-    assert row["api_key"] != "key-123"
-    assert decrypt_secret(row["api_key"]) == "key-123"
-    assert _stored_token(db_path) == exchanges.last_token
-    assert row["bearer_token_expires_at"] is not None
+    stored = _stored_key(db_path)
+    assert stored != "key-123"
+    assert decrypt_secret(stored) == "key-123"
 
-
-def test_token_exchange_leaves_no_cache_file(client, seed, exchanges):
-    seed([])
-    _connect(client)
-    assert exchanges.cache_files
-    assert not any(p.exists() or p.parent.exists() for p in exchanges.cache_files)
+    status = client.get("/api/garmin/status", params={"user": USER}).json()
+    assert status["connected"] is True
 
 
-def test_connect_rejects_bad_key(client, seed, exchanges):
+def test_connect_rejects_bad_key(client, seed, token_calls):
     seed([])
     r = _connect(client, api_key="bad")
     assert r.status_code == 401
@@ -148,70 +102,76 @@ def test_connect_rejects_bad_key(client, seed, exchanges):
     assert status["connected"] is False
 
 
-def test_preview_reuses_stored_token(client, seed, exchanges, searches):
+def test_preview_pages_through_activities(client, seed, token_calls, monkeypatch):
     seed([])
     _connect(client)
-    stored = exchanges.last_token
+    pages = [[ACTIVITY] * 20, [{**ACTIVITY, "activityId": 2}]]
+    seen: list[dict] = []
 
-    assert _preview(client).status_code == 200
-    assert _preview(client).status_code == 200
-    assert len(exchanges.calls) == 1
-    assert searches["tokens"] == [stored, stored]
+    def fake_search(self, **kwargs):
+        seen.append(kwargs)
+        return pages[len(seen) - 1]
 
-
-def test_preview_exchanges_key_when_token_nearly_expired(
-    client, db_path, seed, exchanges, searches
-):
-    seed([])
-    exchanges.lifetime = 1800
-    _connect(client)
-    exchanges.lifetime = 86400
-
-    assert _preview(client).status_code == 200
-    assert len(exchanges.calls) == 2
-    assert searches["tokens"] == [exchanges.last_token]
-    assert _stored_token(db_path) == exchanges.last_token
-
-
-def test_preview_replaces_revoked_token(client, db_path, seed, exchanges, searches):
-    seed([])
-    _connect(client)
-    revoked = exchanges.last_token
-    searches["responses"] = [_http_error(401), [ACTIVITY]]
-
-    r = _preview(client)
-    assert r.status_code == 200, r.text
-    assert searches["tokens"] == [revoked, exchanges.last_token]
-    assert _stored_token(db_path) == exchanges.last_token
-
-
-def test_preview_pages_through_activities(client, seed, exchanges, searches):
-    seed([])
-    _connect(client)
-    searches["responses"] = [[ACTIVITY] * 20, [{**ACTIVITY, "activityId": 2}]]
-
-    r = _preview(client)
+    monkeypatch.setattr(GarminPersonalApiClient, "search_activities", fake_search)
+    r = client.post(
+        "/api/garmin/sync/preview",
+        params={"user": USER},
+        json={"start_date": "2026-07-01", "end_date": "2026-07-02"},
+    )
     assert r.status_code == 200, r.text
     assert len(r.json()) == 21
-    assert len(searches["tokens"]) == 2
+    assert [s["start"] for s in seen] == [0, 20]
+    assert str(seen[0]["start_date"]) == "2026-07-01"
+
+
+def test_preview_refreshes_revoked_token_once(client, seed, token_calls, monkeypatch):
+    seed([])
+    _connect(client)
+    attempts: list[int] = []
+
+    def fake_search(self, **kwargs):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise _http_error(401)
+        return [ACTIVITY]
+
+    monkeypatch.setattr(GarminPersonalApiClient, "search_activities", fake_search)
+    r = client.post(
+        "/api/garmin/sync/preview",
+        params={"user": USER},
+        json={"start_date": "2026-07-01", "end_date": "2026-07-01"},
+    )
+    assert r.status_code == 200, r.text
+    assert token_calls[-2:] == [("key-123", False), ("key-123", True)]
 
 
 @pytest.mark.parametrize(("garmin_status", "expected"), [(429, 429), (500, 502)])
 def test_preview_maps_garmin_errors(
-    client, seed, exchanges, searches, garmin_status, expected
+    client, seed, token_calls, monkeypatch, garmin_status, expected
 ):
     seed([])
     _connect(client)
-    searches["responses"] = [_http_error(garmin_status)]
-    assert _preview(client).status_code == expected
+
+    def fake_search(self, **kwargs):
+        raise _http_error(garmin_status)
+
+    monkeypatch.setattr(GarminPersonalApiClient, "search_activities", fake_search)
+    r = client.post(
+        "/api/garmin/sync/preview",
+        params={"user": USER},
+        json={"start_date": "2026-07-01", "end_date": "2026-07-01"},
+    )
+    assert r.status_code == expected
 
 
-def test_disconnect_removes_credentials(client, db_path, seed, exchanges):
+def test_disconnect_removes_key_and_token_cache(client, seed, token_calls):
     seed([])
     _connect(client)
+    cache = garmin_client.token_cache_file("u1")
+    cache.write_text("{}")
 
     r = client.delete("/api/garmin/disconnect", params={"user": USER})
     assert r.status_code == 204
-    assert _row(db_path) is None
+    assert not cache.exists()
     status = client.get("/api/garmin/status", params={"user": USER}).json()
     assert status["connected"] is False

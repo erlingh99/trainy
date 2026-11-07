@@ -9,3 +9,7 @@ MIGRATIONS_PATH = Path(__file__).parent.parent / "alembic.ini"
 # Required for Garmin API key encryption at rest.
 # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 GARMIN_SECRET_KEY = os.environ.get("GARMIN_SECRET_KEY", "")
+
+GARMIN_TOKEN_CACHE_DIR = os.environ.get(
+    "GARMIN_TOKEN_CACHE_DIR", "/app/data/garmin-tokens"
+)

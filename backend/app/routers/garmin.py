@@ -12,11 +12,10 @@ Sync is two-phase:
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from garmin_personal_api import BearerToken
 from pydantic import BaseModel
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -27,8 +26,6 @@ from ..garmin.client import GarminAuthError, GarminRateLimitError
 from ..garmin.crypto import decrypt_secret, encrypt_secret
 from ..garmin.mapper import ActivityProposal, map_activities
 from ..models.models import GarminCredentials, Session, SessionStatus, User
-
-_TOKEN_REUSE_MARGIN = timedelta(hours=1)
 
 router = APIRouter(prefix="/api/garmin", tags=["garmin"])
 
@@ -116,22 +113,6 @@ async def _get_creds(db: DbSession, user_id: str) -> GarminCredentials:
     return creds
 
 
-def _store_token(creds: GarminCredentials, token: BearerToken) -> None:
-    creds.bearer_token = encrypt_secret(token.access_token)
-    creds.bearer_token_expires_at = datetime.fromtimestamp(token.expires_at, UTC)
-
-
-def _usable_token(creds: GarminCredentials) -> str | None:
-    expires_at = creds.bearer_token_expires_at
-    if creds.bearer_token is None or expires_at is None:
-        return None
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-    if expires_at - datetime.now(UTC) <= _TOKEN_REUSE_MARGIN:
-        return None
-    return decrypt_secret(creds.bearer_token)
-
-
 def _proposal_to_out(p: ActivityProposal) -> ActivityProposalOut:
     return ActivityProposalOut(
         garmin_activity_id=p.garmin_activity_id,
@@ -177,7 +158,7 @@ async def connect_garmin(
     encrypted_key = encrypt_secret(api_key)
 
     try:
-        token = await asyncio.to_thread(garmin_client.exchange_api_key, api_key)
+        await asyncio.to_thread(garmin_client.verify_api_key, api_key, u.id)
     except Exception as e:
         raise _garmin_error_to_http(e) from e
 
@@ -187,7 +168,6 @@ async def connect_garmin(
         creds = GarminCredentials(user_id=u.id, api_key=encrypted_key, created_at=now)
     creds.api_key = encrypted_key
     creds.api_key_expires_on = payload.api_key_expires_on
-    _store_token(creds, token)
     creds.last_sync_error = None
     creds.updated_at = now
     db.add(creds)
@@ -215,6 +195,7 @@ async def disconnect_garmin(
     creds = await db.get(GarminCredentials, u.id)
     if creds:
         await db.delete(creds)
+    garmin_client.token_cache_file(u.id).unlink(missing_ok=True)
 
 
 @router.post("/sync/preview")
@@ -231,18 +212,15 @@ async def sync_preview(
     creds = await _get_creds(db, u.id)
 
     try:
-        activities, new_token = await asyncio.to_thread(
+        activities = await asyncio.to_thread(
             garmin_client.get_activities,
             decrypt_secret(creds.api_key),
-            _usable_token(creds),
+            u.id,
             payload.start_date,
             payload.end_date,
         )
     except Exception as e:
         raise _garmin_error_to_http(e) from e
-    if new_token is not None:
-        _store_token(creds, new_token)
-        db.add(creds)
 
     # Load planned and done sessions in the range for matching
     result = await db.exec(

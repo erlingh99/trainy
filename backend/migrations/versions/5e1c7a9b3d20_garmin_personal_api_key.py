@@ -39,8 +39,6 @@ def upgrade() -> None:
         [
             sa.Column("api_key", sa.String(), nullable=False),
             sa.Column("api_key_expires_on", sa.Date(), nullable=True),
-            sa.Column("bearer_token", sa.String(), nullable=True),
-            sa.Column("bearer_token_expires_at", sa.DateTime(), nullable=True),
         ]
     )
 
