@@ -2,21 +2,22 @@
 Garmin Connect Personal API access via Garmin's official client library.
 
 Each user pastes a Personal API key created at
-https://connect.garmin.com/app/settings/personalApiToken. The library exchanges
-it for a 24h bearer token and caches that token in a per-user file.
+https://connect.garmin.com/app/settings/personalApiToken, which is exchanged
+for a 24h bearer token. The caller persists that token (in the DB) and passes
+it back in; the library's own file cache is confined to a throwaway temp dir.
 """
 
 from datetime import date
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from garmin_personal_api import (
+    BearerToken,
     GarminPersonalApiClient,
     GarminPersonalApiError,
     HttpError,
     PersonalApiAuthenticator,
 )
-
-from ..config import GARMIN_TOKEN_CACHE_DIR
 
 _PAGE_SIZE = 20
 
@@ -33,10 +34,6 @@ class GarminConnectionError(Exception):
     """Network failure or unexpected response."""
 
 
-def token_cache_file(user_id: str) -> Path:
-    return Path(GARMIN_TOKEN_CACHE_DIR) / f"{user_id}.json"
-
-
 def _translate(e: Exception) -> Exception:
     if isinstance(e, HttpError):
         if e.status_code in (401, 403):
@@ -48,41 +45,43 @@ def _translate(e: Exception) -> Exception:
     return GarminConnectionError(str(e))
 
 
-def _bearer_token(api_key: str, user_id: str, *, force_refresh: bool) -> str:
-    with PersonalApiAuthenticator(
-        bearer_token_cache_file=token_cache_file(user_id)
-    ) as auth:
-        return auth.obtain_token(api_key, force_refresh=force_refresh).access_token
+def _exchange(api_key: str) -> BearerToken:
+    with (
+        TemporaryDirectory() as tmp,
+        PersonalApiAuthenticator(
+            bearer_token_cache_file=Path(tmp) / "token.json"
+        ) as auth,
+    ):
+        return auth.obtain_token(api_key, force_refresh=True)
 
 
-def verify_api_key(api_key: str, user_id: str) -> None:
-    """Exchange the key for a fresh token, raising if Garmin rejects it."""
+def exchange_api_key(api_key: str) -> BearerToken:
+    """Exchange the key for a fresh bearer token, raising if Garmin rejects it."""
     try:
-        _bearer_token(api_key, user_id, force_refresh=True)
+        return _exchange(api_key)
     except (GarminPersonalApiError, OSError) as e:
         raise _translate(e) from e
 
 
 def get_activities(
-    api_key: str, user_id: str, start_date: date, end_date: date
-) -> list[dict]:
-    """Fetch all activities in the date range (blocking — run in a thread)."""
+    api_key: str, token: str | None, start_date: date, end_date: date
+) -> tuple[list[dict], BearerToken | None]:
+    """
+    Fetch all activities in the date range (blocking — run in a thread).
+
+    Returns the activities and a new bearer token when one had to be obtained,
+    or None when the given token was reused.
+    """
     try:
-        try:
-            return _fetch(
-                _bearer_token(api_key, user_id, force_refresh=False),
-                start_date,
-                end_date,
-            )
-        except HttpError as e:
-            if e.status_code != 401:
-                raise
-            # A cached token can be revoked before it expires.
-            return _fetch(
-                _bearer_token(api_key, user_id, force_refresh=True),
-                start_date,
-                end_date,
-            )
+        if token is not None:
+            try:
+                return _fetch(token, start_date, end_date), None
+            except HttpError as e:
+                # A stored token can be revoked before it expires.
+                if e.status_code != 401:
+                    raise
+        new_token = _exchange(api_key)
+        return _fetch(new_token.access_token, start_date, end_date), new_token
     except (GarminPersonalApiError, OSError) as e:
         raise _translate(e) from e
 
