@@ -308,7 +308,7 @@ function Bubble({
                   style={{ backgroundColor: dayColor(c.forms) }}
                 />
                 <span className="min-w-0 flex-1 truncate">
-                  {c.session.name ?? Array.from(c.forms, (f) => t(`form.${f}`)).join(", ")}
+                  {c.session.name || Array.from(c.forms, (f) => t(`form.${f}`)).join(", ")}
                 </span>
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {formatValue(metric, c)}
