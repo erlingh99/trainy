@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SessionViewDialog } from "./SessionViewDialog";
+import { api } from "@/lib/api";
 import { monthSessionsQuery } from "@/lib/queries";
 import { isoDate, isoWeekOf, shiftIsoWeek, weekDays } from "@/lib/week";
 import { secondsToHmm } from "@/lib/format";
@@ -15,7 +18,8 @@ const MIXED_COLOR = "#eab308";
 type Metric = "km" | "hours";
 export type Activity = "all" | "running";
 
-type DayVolume = { seconds: number; km: number; forms: Set<string> };
+type Contribution = { session: Session; seconds: number; km: number; forms: Set<string> };
+type DayVolume = { seconds: number; km: number; forms: Set<string>; sessions: Contribution[] };
 
 const PAGE_SIZE = 8;
 const MAX_BUBBLE = 44;
@@ -25,10 +29,23 @@ const MIN_LABEL_INSIDE = 26;
 function aggregateByDay(sessions: Session[], activity: Activity): Map<string, DayVolume> {
   const byDay = new Map<string, DayVolume>();
   for (const s of sessions) {
+    let contribution: Contribution | null = null;
     for (const p of s.parts) {
       const form = p.form ?? "other";
       if (activity === "running" && !RUNNING_FORMS.has(form)) continue;
-      const day = byDay.get(s.date) ?? { seconds: 0, km: 0, forms: new Set<string>() };
+      const day = byDay.get(s.date) ?? {
+        seconds: 0,
+        km: 0,
+        forms: new Set<string>(),
+        sessions: [],
+      };
+      if (!contribution) {
+        contribution = { session: s, seconds: 0, km: 0, forms: new Set<string>() };
+        day.sessions.push(contribution);
+      }
+      contribution.seconds += p.duration_seconds ?? 0;
+      contribution.km += p.distance_km ?? 0;
+      contribution.forms.add(form);
       day.seconds += p.duration_seconds ?? 0;
       day.km += p.distance_km ?? 0;
       day.forms.add(form);
@@ -73,6 +90,16 @@ export function TrainingLog({
   const { t } = useTranslation();
   const [metric, setMetric] = useState<Metric>("km");
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [viewing, setViewing] = useState<Session | null>(null);
+  const qc = useQueryClient();
+  const markDone = useMutation({
+    mutationFn: (id: string) =>
+      api<Session>(`/api/sessions/${id}`, { method: "PATCH", json: { status: "done" } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
+    },
+  });
 
   const today = new Date();
   const lastWeek =
@@ -159,6 +186,7 @@ export function TrainingLog({
                         date={date}
                         metric={metric}
                         size={bubbleSize(value(d), max)}
+                        onSelect={setViewing}
                       />
                     )}
                   </div>
@@ -185,6 +213,21 @@ export function TrainingLog({
           {hasMixed && <LegendItem color={MIXED_COLOR} label={t("dashboard.log.mixed")} />}
         </div>
       )}
+
+      {viewing && (
+        <SessionViewDialog
+          open
+          onOpenChange={(o) => !o && setViewing(null)}
+          session={viewing}
+          userId={viewing.user_id}
+          today={isoDate(today)}
+          onMarkDone={() => {
+            markDone.mutate(viewing.id);
+            setViewing(null);
+          }}
+          markDonePending={markDone.isPending}
+        />
+      )}
     </div>
   );
 }
@@ -203,33 +246,79 @@ function Bubble({
   date,
   metric,
   size,
+  onSelect,
 }: {
   day: DayVolume;
   date: string;
   metric: Metric;
   size: number;
+  onSelect: (s: Session) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
   const label = bubbleLabel(metric, day);
   const inside = size >= MIN_LABEL_INSIDE;
+  const heading = new Date(`${date}T00:00:00`).toLocaleDateString(i18n.language, {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
   return (
-    <div
-      className="relative flex items-center justify-center rounded-full transition-all"
-      title={`${date}: ${Array.from(day.forms, (f) => t(`form.${f}`)).join(", ")} · ${formatValue(metric, day)}`}
-      style={{ width: size, height: size, backgroundColor: dayColor(day.forms) }}
-    >
-      {label && (
-        <span
-          className={
-            inside
-              ? "text-[10px] font-semibold tabular-nums leading-none text-white [text-shadow:0_0_2px_rgba(0,0,0,0.45)]"
-              : "absolute top-full mt-0.5 text-[9px] tabular-nums leading-none text-muted-foreground"
-          }
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="relative flex cursor-pointer items-center justify-center rounded-full transition-all hover:ring-2 hover:ring-ring/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          title={`${date}: ${Array.from(day.forms, (f) => t(`form.${f}`)).join(", ")} · ${formatValue(metric, day)}`}
+          style={{ width: size, height: size, backgroundColor: dayColor(day.forms) }}
         >
-          {label}
-        </span>
-      )}
-    </div>
+          {label && (
+            <span
+              className={
+                inside
+                  ? "text-[10px] font-semibold tabular-nums leading-none text-white [text-shadow:0_0_2px_rgba(0,0,0,0.45)]"
+                  : "absolute top-full mt-0.5 text-[9px] tabular-nums leading-none text-muted-foreground"
+              }
+            >
+              {label}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2">
+        <div className="flex items-baseline justify-between gap-2 px-2 pb-1.5 pt-1">
+          <span className="text-xs font-semibold first-letter:uppercase">{heading}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {formatValue(metric, day)}
+          </span>
+        </div>
+        <ul className="space-y-0.5">
+          {day.sessions.map((c) => (
+            <li key={c.session.id}>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                onClick={() => {
+                  setOpen(false);
+                  onSelect(c.session);
+                }}
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: dayColor(c.forms) }}
+                />
+                <span className="min-w-0 flex-1 truncate">
+                  {c.session.name || Array.from(c.forms, (f) => t(`form.${f}`)).join(", ")}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {formatValue(metric, c)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 
